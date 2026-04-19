@@ -38,6 +38,7 @@ const CANG_WEIGHT = [1.0, 0.5, 0.3] as const;
 export function computeDecisionAids(
 	bazi: { 日主: string; 柱位详细: Pillars },
 	tenGodStats: Record<string, TenGodStat>,
+	pillarKeys: readonly PillarKey[] = PILLAR_KEYS,
 ): DecisionAids {
 	const 日主五行 = STEM_ELEMENT[bazi.日主] ?? "";
 
@@ -60,7 +61,7 @@ export function computeDecisionAids(
 	// 日主根气
 	const 柱位根: DecisionAids["日主根气"]["柱位根"] = [];
 	let 总根气 = 0;
-	for (const key of PILLAR_KEYS) {
+	for (const key of pillarKeys) {
 		const pillar = bazi.柱位详细[`${key}柱` as const];
 		const hidden = pillar.藏干;
 		const matches: string[] = [];

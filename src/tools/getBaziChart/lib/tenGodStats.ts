@@ -10,14 +10,15 @@ export function computeTenGodStats(pillars: {
 	年柱: Pick<Pillar, "主星" | "副星">;
 	月柱: Pick<Pillar, "主星" | "副星">;
 	日柱: Pick<Pillar, "副星">;
-	时柱: Pick<Pillar, "主星" | "副星">;
+	时柱?: Pick<Pillar, "主星" | "副星">;
 }): Record<string, TenGodStat> {
-	const transparent = [pillars.年柱.主星, pillars.月柱.主星, pillars.时柱.主星];
+	const transparent = [pillars.年柱.主星, pillars.月柱.主星];
+	if (pillars.时柱) transparent.push(pillars.时柱.主星);
 	const hidden = [
 		...pillars.年柱.副星,
 		...pillars.月柱.副星,
 		...pillars.日柱.副星,
-		...pillars.时柱.副星,
+		...(pillars.时柱?.副星 ?? []),
 	];
 
 	const stats: Record<string, TenGodStat> = {};
