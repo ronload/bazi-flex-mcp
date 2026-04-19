@@ -409,6 +409,20 @@ describe("enrichResult", () => {
 		}
 	});
 
+	test("默认 流年范围 是 ±3 年 (7 年窗口)", () => {
+		const raw = getBaziChart({
+			year: 1990,
+			month: 6,
+			day: 15,
+			hour: 12,
+			minute: 0,
+			gender: 1,
+		});
+		const e = enrichResult(raw, { year: 1990, month: 6, day: 15 }, "2026-04-19");
+		expect(e.八字.流年范围).toEqual({ start: 2023, end: 2029 });
+		expect(e.八字.流年).toHaveLength(7);
+	});
+
 	test("restructures 大运 空亡 into 所在旬空亡 + 落空亡 (same shape as 柱位详细)", () => {
 		// 2002-05-17 06:00 男 → 日柱乙酉 (旬空午未), 年柱壬午 (旬空申酉).
 		const raw = getBaziChart({

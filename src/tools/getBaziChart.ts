@@ -512,7 +512,7 @@ export function enrichResult(
 	const startMd = parseIsoLikeDate(bazi.起运日期);
 	const tenGodStats = computeTenGodStats(bazi.柱位详细);
 	const pillarRelations = computePillarRelations(bazi);
-	const effectiveLiunianRange = liunianRange ?? { start: refYear - 5, end: refYear + 15 };
+	const effectiveLiunianRange = liunianRange ?? { start: refYear - 3, end: refYear + 3 };
 	const liunian = computeLiunian(bazi.日主, effectiveLiunianRange, refYear);
 	const decisionAids = computeDecisionAids(bazi, tenGodStats);
 	const solarIso = chineseDateTimeToIso(bazi.公历);
@@ -608,12 +608,12 @@ const inputShape = {
 		.number()
 		.int()
 		.optional()
-		.describe("Start year (Gregorian) for the 流年 table. Defaults to referenceDate year - 5."),
+		.describe("Start year (Gregorian) for the 流年 table. Defaults to referenceDate year - 3."),
 	liunianEnd: z
 		.number()
 		.int()
 		.optional()
-		.describe("End year (Gregorian) for the 流年 table. Defaults to referenceDate year + 15."),
+		.describe("End year (Gregorian) for the 流年 table. Defaults to referenceDate year + 3."),
 };
 
 export function registerGetBaziChart(server: McpServer): void {
@@ -630,7 +630,7 @@ export function registerGetBaziChart(server: McpServer): void {
 				"- `八字.十神统计[十神]` aggregates ten-god counts as `{ 透, 藏, 共 }`. `透` counts from year/month/hour pillars' `主星`; `藏` counts from all four pillars' `副星` (earth-branch hidden stems). 日主 itself is excluded.",
 				'- `八字.柱间关系` lists pair-wise (or triple-wise, for 三刑) relations between the four pillars, derived from upstream `刑冲合会`. Each entry is `{ kind: "天干"|"地支", type: "相合"|"相冲"|"相害"|"相破"|"暗合"|"自刑"|"三刑"|"克", pillars: [年|月|日|时, ...], 干支: [...], raw }`. When two pillars share the same stem/branch (e.g. two 乙 in month and day), a single upstream relation expands to multiple entries covering each possible pillar pair — the ambiguity is surfaced rather than hidden.',
 				"- `八字.决策辅助` surfaces three derived metrics so consumers do not recompute them: `日主得令` (day-master element relation to month-command element + `得令` boolean), `日主根气` (day-master-element presence across all four earth-branch hidden-stems using canonical 本/中/余 weights 1.0/0.5/0.3), and `透藏平衡` (比劫 vs 异类 transparent/hidden counts). These are raw inputs — no 旺衰/格局/用神 judgement is baked in. Feed them into your own reasoning rules.",
-				"- `八字.流年` is an array of year-by-year 流年 entries covering `八字.流年范围` (default: `[referenceDate year - 5, referenceDate year + 15]`, configurable via `liunianStart`/`liunianEnd`). Each entry is `{ 年份, 干支, 天干, 地支, 主星, 藏干, 藏干十神, 当前 }`; `主星` is the ten-god of the year stem against the day-master. 流年 vs 四柱/大运 relations are NOT pre-computed — derive them yourself by combining `流年[].干支` with `柱间关系` logic or `大运[].干支`. Year boundaries follow the 立春-based 干支年 convention (the first ~5 weeks of a Gregorian year before 立春 technically belong to the previous 干支年 — consult 八字.起运日期 semantics if this matters for your use case).",
+				"- `八字.流年` is an array of year-by-year 流年 entries covering `八字.流年范围` (default: `[referenceDate year - 3, referenceDate year + 3]` = 7 years, configurable via `liunianStart`/`liunianEnd` for a wider window). Each entry is `{ 年份, 干支, 天干, 地支, 主星, 藏干, 藏干十神, 当前 }`; `主星` is the ten-god of the year stem against the day-master. 流年 vs 四柱/大运 relations are NOT pre-computed — derive them yourself by combining `流年[].干支` with `柱间关系` logic or `大运[].干支`. Year boundaries follow the 立春-based 干支年 convention (the first ~5 weeks of a Gregorian year before 立春 technically belong to the previous 干支年 — consult 八字.起运日期 semantics if this matters for your use case).",
 				'- `八字.大运[].日主关系` is `null` when there is no relation (previously `""`).',
 				"- `八字.大运[].当前` is computed from `meta.referenceDateUsed` (defaults to today). Override via the `referenceDate` input for historical or hypothetical scenarios.",
 				"- `meta.scoringMethod` documents how `八字.五行分值` is computed, so consumers do not need to guess the weighting scheme.",
@@ -647,8 +647,8 @@ export function registerGetBaziChart(server: McpServer): void {
 			const effectiveRef = referenceDate ?? todayIsoDate();
 			const refYear = Number(effectiveRef.slice(0, 4));
 			const range = {
-				start: liunianStart ?? refYear - 5,
-				end: liunianEnd ?? refYear + 15,
+				start: liunianStart ?? refYear - 3,
+				end: liunianEnd ?? refYear + 3,
 			};
 			const enriched = enrichResult(
 				result,

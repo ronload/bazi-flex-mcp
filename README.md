@@ -71,8 +71,8 @@ Computes a full Bazi chart from a complete birth time.
 | `longitude`     | number (°E)    | no       |                                                                                    |
 | `latitude`      | number (°N)    | no       |                                                                                    |
 | `referenceDate` | `YYYY-MM-DD`   | no       | decides which decade-cycle is marked `当前`; defaults to today                      |
-| `liunianStart`  | int (year)     | no       | first Gregorian year for `八字.流年`; defaults to `referenceDate - 5`               |
-| `liunianEnd`    | int (year)     | no       | last Gregorian year for `八字.流年`; defaults to `referenceDate + 15`               |
+| `liunianStart`  | int (year)     | no       | first Gregorian year for `八字.流年`; defaults to `referenceDate - 3`               |
+| `liunianEnd`    | int (year)     | no       | last Gregorian year for `八字.流年`; defaults to `referenceDate + 3`                |
 
 ### Output shape (post-processing on top of `shunshi-bazi-core`)
 
@@ -85,7 +85,7 @@ This server is a thin wrapper around [`shunshi-bazi-core`](https://www.npmjs.com
 - `meta.referenceDateUsed` — echoes the effective reference date.
 - `meta.scoringMethod` — documents how `八字.五行分值` is computed (see below).
 - `八字.柱间关系` — pair-wise (and triple-wise for 三刑) expansion of upstream's flat `刑冲合会`. Each entry carries `pillars` (which pillars are involved) and `干支` so complex charts with duplicate stems/branches (e.g. two 乙 across month/day) surface all candidate pairs instead of hiding the ambiguity. Parses upstream's short-form strings — does not re-implement relation rules.
-- `八字.流年` / `八字.流年范围` — year-by-year 流年 table spanning `[liunianStart, liunianEnd]` (defaults `[referenceDate - 5, +15]`). Each entry: `{ 年份, 干支, 天干, 地支, 主星, 藏干, 藏干十神, 当前 }`. 流年 year boundaries follow the 立春-based 干支年 convention (first ~5 weeks of a Gregorian year before 立春 technically belong to the previous 干支年). Relations against 四柱/大运 are **not** pre-computed — combine `流年[].干支` with `柱间关系` logic or `大运[].干支` yourself.
+- `八字.流年` / `八字.流年范围` — year-by-year 流年 table spanning `[liunianStart, liunianEnd]` (defaults `[referenceDate - 3, +3]` = 7 years; widen via inputs if you need a longer horizon). Each entry: `{ 年份, 干支, 天干, 地支, 主星, 藏干, 藏干十神, 当前 }`. 流年 year boundaries follow the 立春-based 干支年 convention (first ~5 weeks of a Gregorian year before 立春 technically belong to the previous 干支年). Relations against 四柱/大运 are **not** pre-computed — combine `流年[].干支` with `柱间关系` logic or `大运[].干支` yourself.
 - `八字.决策辅助` — three derived metrics so consumers do not recompute them: `日主得令` (day-master element vs month-command element, `得令` boolean), `日主根气` (day-master-element presence across all four earth-branch hidden-stems using 本/中/余 weights 1.0/0.5/0.3), `透藏平衡` (比劫 vs 异类 transparent/hidden counts). These are **raw inputs** — no 旺衰/格局/用神 judgement is made. Feed them into your own reasoning rules.
 - All time strings (`输入.公历`, `真太阳时.钟表时间`, `真太阳时.真太阳时`, `八字.公历`) are normalised to ISO 8601 with second precision (`YYYY-MM-DDTHH:MM:SS`). The raw engine uses a mix of minute-precision (`"YYYY-MM-DD HH:MM"`) and Chinese-formatted second-precision (`"YYYY年M月D日 HH:MM:SS"`); this server unifies them so consumers do not have to reconcile formats or lose seconds. `真太阳时.修正秒数` is added as an integer companion to `修正分钟`.
 
