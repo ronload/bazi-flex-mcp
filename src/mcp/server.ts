@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerGetBaziChart } from "../tools/getBaziChart/index.js";
+import { registerGetBaziChartPartial } from "../tools/getBaziChartPartial/index.js";
 
 export function createServer(): McpServer {
 	const server = new McpServer({
@@ -8,6 +9,7 @@ export function createServer(): McpServer {
 	});
 
 	registerGetBaziChart(server);
+	registerGetBaziChartPartial(server);
 
 	return server;
 }
