@@ -1,0 +1,18 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "bazi-flex-mcp",
+	"main": "src/http.ts",
+	"compatibility_date": "2026-01-01",
+	"compatibility_flags": ["nodejs_compat"],
+	"observability": {
+		"enabled": true
+	},
+	"env": {
+		"production": {
+			"name": "bazi-flex",
+			"routes": [
+				{ "pattern": "bazi-flex.ronaldluo.com", "custom_domain": true }
+			]
+		}
+	}
+}

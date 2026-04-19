@@ -35,9 +35,12 @@
   "scripts": {
     "dev": "bun run src/http.ts",
     "dev:stdio": "bun run src/stdio.ts",
+    "dev:worker": "wrangler dev",
     "build": "bun build src/http.ts --target=bun --outdir=dist --outfile=http.js && bun build src/stdio.ts --target=bun --outdir=dist --outfile=stdio.js",
     "start": "bun run dist/http.js",
     "start:stdio": "bun run dist/stdio.js",
+    "deploy": "wrangler deploy --env=\"\"",
+    "deploy:prod": "wrangler deploy --env production",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "lint": "biome lint ./src",
@@ -55,7 +58,8 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.12",
     "@types/bun": "latest",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "wrangler": "^4.0.0"
   },
   "engines": {
     "bun": ">=1.1.0"

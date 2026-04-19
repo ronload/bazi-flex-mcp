@@ -27,6 +27,10 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .cache
 *.tsbuildinfo
 
+# cloudflare wrangler
+.wrangler
+.dev.vars
+
 # IntelliJ based IDEs
 .idea
 

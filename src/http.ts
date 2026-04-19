@@ -13,7 +13,4 @@ app.all("/mcp", async (c) => {
 	return transport.handleRequest(c);
 });
 
-const port = Number(process.env.PORT ?? 3000);
-console.log(`MCP server listening on http://localhost:${port}`);
-
-export default { port, fetch: app.fetch };
+export default app;
