@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { getBaziChart } from "shunshi-bazi-core";
-import { computeTenGodStats, enrichResult } from "./getBaziChart.js";
+import {
+	computeDecisionAids,
+	computeLiunian,
+	computeTenGodStats,
+	enrichResult,
+} from "./getBaziChart.js";
 
 describe("computeTenGodStats", () => {
 	test("separates transparent (年/月/时柱.主星) from hidden (all 副星)", () => {
@@ -150,5 +155,197 @@ describe("enrichResult", () => {
 		expect(enriched.真太阳时).toBeUndefined();
 		// 八字.公历 still normalised even without 真太阳时
 		expect(enriched.八字.公历).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);
+	});
+
+	test("expands duplicate relations across all matching pillar pairs", () => {
+		// 2002-05-17 06:00 男 → 壬午 乙巳 乙酉 己卯, upstream emits "乙克己" twice.
+		// Both 月乙→时己 and 日乙→时己 should surface as distinct entries.
+		const raw = getBaziChart({
+			year: 2002,
+			month: 5,
+			day: 17,
+			hour: 6,
+			minute: 0,
+			gender: 1,
+		});
+		const enriched = enrichResult(raw, { year: 2002, month: 5, day: 17 }, "2026-04-19");
+		const keClashes = enriched.八字.柱间关系.filter(
+			(r) => r.kind === "天干" && r.type === "克" && r.raw === "乙克己",
+		);
+		expect(keClashes).toHaveLength(2);
+		const pairSignatures = keClashes.map((r) => r.pillars.join("-")).sort();
+		expect(pairSignatures).toEqual(["日-时", "月-时"]);
+	});
+
+	test("emits 流年 table over the configured range with correct ganzhi", () => {
+		const raw = getBaziChart({
+			year: 2002,
+			month: 5,
+			day: 17,
+			hour: 6,
+			minute: 0,
+			gender: 1,
+		});
+		const enriched = enrichResult(raw, { year: 2002, month: 5, day: 17 }, "2026-04-19", {
+			start: 2024,
+			end: 2028,
+		});
+		expect(enriched.八字.流年范围).toEqual({ start: 2024, end: 2028 });
+		expect(enriched.八字.流年.map((e) => e.干支)).toEqual(["甲辰", "乙巳", "丙午", "丁未", "戊申"]);
+		const current = enriched.八字.流年.find((e) => e.当前);
+		expect(current?.年份).toBe(2026);
+		expect(current?.干支).toBe("丙午");
+		// 日主乙,2026丙午:乙生丙,乙陰丙陽 → 伤官
+		expect(current?.主星).toBe("伤官");
+		// 午藏干 丁,己 → 乙對丁 生同陰=食神;乙對己 克同陰=偏财
+		expect(current?.藏干).toEqual(["丁", "己"]);
+		expect(current?.藏干十神).toEqual(["食神", "偏财"]);
+	});
+
+	test("computeLiunian covers all ten-god rules (生剋陰陽)", () => {
+		// 日主 甲 (木陽) — 窮舉十神
+		const entries = computeLiunian("甲", { start: 1984, end: 1993 }, 1984);
+		// 甲 vs 流年天干 -> 主星
+		const 主星 = entries.map((e) => `${e.天干}:${e.主星}`);
+		expect(主星).toEqual([
+			"甲:比肩", // 甲 vs 甲 同木同陽 → 比肩
+			"乙:劫财", // 甲 vs 乙 同木異陽 → 劫财
+			"丙:食神", // 甲生丙 同陽 → 食神
+			"丁:伤官", // 甲生丁 異陽 → 伤官
+			"戊:偏财", // 甲克戊 同陽 → 偏财
+			"己:正财", // 甲克己 異陽 → 正财
+			"庚:七杀", // 庚克甲 同陽 → 七杀
+			"辛:正官", // 辛克甲 異陽 → 正官
+			"壬:偏印", // 壬生甲 同陽 → 偏印
+			"癸:正印", // 癸生甲 異陽 → 正印
+		]);
+	});
+
+	test("computeLiunian handles pre-epoch / negative years without crashing", () => {
+		const entries = computeLiunian("甲", { start: -4, end: 4 }, 0);
+		expect(entries).toHaveLength(9);
+		expect(entries.every((e) => e.干支.length === 2)).toBe(true);
+	});
+
+	test("populates 决策辅助 with 日主得令 / 日主根气 / 透藏平衡", () => {
+		// 2002-05-17 06:00 男 → 壬午 乙巳 乙酉 己卯, 日主 乙木,
+		// 巳月 (丙火主气) → 乙生丙 → 我生 → 不得令;時柱卯含乙 = 唯一根.
+		const raw = getBaziChart({
+			year: 2002,
+			month: 5,
+			day: 17,
+			hour: 6,
+			minute: 0,
+			gender: 1,
+		});
+		const e = enrichResult(raw, { year: 2002, month: 5, day: 17 }, "2026-04-19");
+		const aid = e.八字.决策辅助;
+
+		expect(aid.日主得令?.日主五行).toBe("木");
+		expect(aid.日主得令?.月令五行).toBe("火");
+		expect(aid.日主得令?.关系).toBe("我生");
+		expect(aid.日主得令?.得令).toBe(false);
+
+		expect(aid.日主根气.日主五行).toBe("木");
+		expect(aid.日主根气.柱位根).toHaveLength(1);
+		expect(aid.日主根气.柱位根[0]?.柱).toBe("时");
+		expect(aid.日主根气.柱位根[0]?.同类藏干).toEqual(["乙"]);
+		expect(aid.日主根气.总根气).toBe(1);
+
+		// 透藏平衡 transparent totals must equal 十神统计 counts summed.
+		const stats = e.八字.十神统计;
+		const totalTou = Object.values(stats).reduce((a, s) => a + s.透, 0);
+		expect(aid.透藏平衡.比劫透 + aid.透藏平衡.异类透).toBe(totalTou);
+	});
+
+	test("computeDecisionAids handles 日主得令 when 日主 == 月令五行", () => {
+		// Synthetic minimal pillars — 日主丙 (火), 月柱丙午 (巳午未都可), use 巳.
+		const pillars = {
+			年柱: {
+				干支: "甲午",
+				天干: "甲",
+				地支: "午",
+				纳音: "",
+				五行: "",
+				主星: "偏印",
+				副星: [],
+				藏干: ["丁", "己"],
+				藏干详情: [],
+				星运: "",
+				自坐: "",
+				空亡: "",
+				神煞: [],
+			},
+			月柱: {
+				干支: "乙巳",
+				天干: "乙",
+				地支: "巳",
+				纳音: "",
+				五行: "",
+				主星: "正印",
+				副星: [],
+				藏干: ["丙", "庚", "戊"],
+				藏干详情: [],
+				星运: "",
+				自坐: "",
+				空亡: "",
+				神煞: [],
+			},
+			日柱: {
+				干支: "丙戌",
+				天干: "丙",
+				地支: "戌",
+				纳音: "",
+				五行: "",
+				主星: "元男",
+				副星: [],
+				藏干: ["戊", "辛", "丁"],
+				藏干详情: [],
+				星运: "",
+				自坐: "",
+				空亡: "",
+				神煞: [],
+			},
+			时柱: {
+				干支: "丁酉",
+				天干: "丁",
+				地支: "酉",
+				纳音: "",
+				五行: "",
+				主星: "劫财",
+				副星: [],
+				藏干: ["辛"],
+				藏干详情: [],
+				星运: "",
+				自坐: "",
+				空亡: "",
+				神煞: [],
+			},
+		};
+		const stats = computeTenGodStats(pillars);
+		// biome-ignore lint/suspicious/noExplicitAny: synthetic fixture for unit test
+		const aid = computeDecisionAids({ 日主: "丙", 柱位详细: pillars as any }, stats);
+		// 巳 本气 丙 → 火. 日主 丙 → 火. 同我 → 得令 true.
+		expect(aid.日主得令?.关系).toBe("同我");
+		expect(aid.日主得令?.得令).toBe(true);
+	});
+
+	test("parses 相冲/相破/相害/暗合 and attaches correct pillars", () => {
+		// 1984-02-02 00:00 男 → picks up several zhi relations.
+		const raw = getBaziChart({
+			year: 1984,
+			month: 2,
+			day: 2,
+			hour: 0,
+			minute: 0,
+			gender: 1,
+		});
+		const enriched = enrichResult(raw, { year: 1984, month: 2, day: 2 }, "2026-04-19");
+		// Every entry parses to a known type and carries at least 2 pillars
+		for (const rel of enriched.八字.柱间关系) {
+			expect(["相合", "相冲", "相害", "相破", "暗合", "自刑", "三刑", "克"]).toContain(rel.type);
+			expect(rel.pillars.length).toBeGreaterThanOrEqual(2);
+			expect(rel.干支.length).toBe(rel.pillars.length);
+		}
 	});
 });
