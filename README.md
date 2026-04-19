@@ -8,14 +8,14 @@ Built on [`shunshi-bazi-core`](https://www.npmjs.com/package/shunshi-bazi-core),
 
 ## Status
 
-Early WIP. Not published to npm yet. The scaffold ships the full-time tool today; the partial-time tool is the focus of the next milestone.
+Early WIP. Not published to npm yet. Both the full-time and partial-time tools are now available; auth on the HTTP transport is the next milestone.
 
 ## Features
 
 - [x] Full-time Bazi charting — `getBaziChart` (thin wrapper over `shunshi-bazi-core`)
+- [x] Partial-time mode — `getBaziChartPartial`, chart computation when the birth hour is unknown
 - [x] stdio transport — for Claude Desktop and other local MCP clients
 - [x] Streamable HTTP transport — for remote hosts (Cloudflare Workers, mobile Claude)
-- [ ] Partial-time mode — chart computation when the birth hour is unknown
 - [ ] OAuth / auth on HTTP transport
 
 ## Quick start
@@ -133,6 +133,45 @@ Upstream's original `柱.空亡` and `大运[].空亡` single-string fields have
 | Earth-branch 余气 (residual)   | 0.3                            |
 
 No month-command bonus and no transparent-stem bonus are applied. The raw numbers are a measure of **relative presence**, not classical 旺衰 strength — a higher score does not automatically mean the day-master is strong. Consumers that need 旺衰 judgement should factor in month-command, 得地/失地, 得势/失势 themselves. `meta.scoringMethod` repeats this information in machine-readable form.
+
+## The `getBaziChartPartial` tool
+
+For callers who know only the birth date (year/month/day) but not the hour. Returns a 3-pillar chart (年/月/日) with all hour-dependent fields stripped, nulled, or recomputed.
+
+### Input
+
+| Field           | Type           | Required | Notes                                                                              |
+| --------------- | -------------- | -------- | ---------------------------------------------------------------------------------- |
+| `year`          | int            | yes      | Gregorian                                                                          |
+| `month`         | int 1-12       | yes      |                                                                                    |
+| `day`           | int 1-31       | yes      |                                                                                    |
+| `gender`        | 0 \| 1         | yes      | 0 = female, 1 = male                                                               |
+| `referenceDate` | `YYYY-MM-DD`   | no       | decides which decade-cycle is marked `当前`; defaults to today                      |
+| `liunianStart`  | int (year)     | no       | first Gregorian year for `八字.流年`; defaults to `referenceDate - 3`               |
+| `liunianEnd`    | int (year)     | no       | last Gregorian year for `八字.流年`; defaults to `referenceDate + 3`                |
+
+`hour`, `minute`, `city`, `longitude`, `latitude` are **not accepted** — they are only meaningful when the birth hour is known. If you have an hour, use `getBaziChart` instead.
+
+### How it works
+
+Internally calls `shunshi-bazi-core` with a placeholder hour of `12:00` (noon) — chosen to stay far from the `23:00` 子时 day-pillar boundary so the year/month/day pillars are stable. Then the wrapper post-processes the result:
+
+- `时柱` is **removed entirely** from `八字.柱位详细` (not just nulled — the key is absent).
+- `命宫`, `身宫`, `胎元`, `胎息` are set to `null` (these formulas require the birth hour).
+- `真太阳时` is **omitted** from the response (true-solar-time correction is meaningless without a real hour).
+- `输入.公历` and `八字.公历` are date-only `YYYY-MM-DD`; `输入.时辰` is `null`.
+- `八字.十神统计` is recomputed without time-pillar contributions (`透` only sums 年/月柱; `藏` only sums 年/月/日柱).
+- `八字.柱间关系` is filtered to drop any pair/triple involving the time pillar.
+- `八字.刑冲合会` (the upstream raw flat list) is **kept as-is** for compatibility but may still mention placeholder-time-pillar relations — prefer the filtered `八字.柱间关系`.
+- `八字.决策辅助.日主根气` is recomputed using only 3 pillars; `透藏平衡` reflects the new `十神统计`; `日主得令` is unchanged (depends on month pillar only).
+- `八字.五行分值` is recomputed: time-pillar 天干 (1.0) and time-pillar 藏干 (1.0/0.5/0.3) contributions are removed; `占比` is renormalised over the 3-pillar total.
+- `八字.大运` is **kept** — the decade-cycle direction (顺/逆) depends only on year-pillar polarity + gender, both unaffected by hour. **However**, the precise 起运 string and 起运日期 are calculated from the distance between birth time and the next/previous solar term, so they may carry **±1 day to ±1-2 month error** when the hour is unknown — and the resulting 起始年份/结束年份 may shift by ±1 year. Treat decade boundaries as approximate windows. See `meta.disclaimer.大运起运精度`.
+- `八字.流年` is unchanged — derivation depends only on the day-master stem and Gregorian year.
+- `八字.旬空` and per-pillar `所在旬空亡` / `落空亡` are unchanged in semantics — at noon the day pillar matches what it would be without solar-time correction, so 旬空 reference branches are stable.
+
+### `meta.disclaimer`
+
+The response includes a `meta.disclaimer` object enumerating exactly which fields were stripped, nulled, or recomputed and why. Surface it to the end user when explaining the chart's confidence level — it is the single source of truth on what is and isn't trustworthy in a partial-time chart.
 
 ## Development
 
