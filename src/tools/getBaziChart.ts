@@ -3,6 +3,8 @@ import { getBaziChart } from "shunshi-bazi-core";
 import { z } from "zod";
 import { BRANCH_HIDDEN, PILLAR_KEYS, type PillarKey, STEM_ELEMENT } from "../ganzhi/data.js";
 import { elementRelation, sexagenaryOfYear, tenStar } from "../ganzhi/index.js";
+import { actualAgeAt } from "../time/age.js";
+import { chineseDateTimeToIso, fmtDtToIso, parseIsoLikeDate, todayIsoDate } from "../time/iso.js";
 
 type GetBaziChartResult = ReturnType<typeof getBaziChart>;
 type Pillars = GetBaziChartResult["八字"]["柱位详细"];
@@ -12,48 +14,6 @@ export interface TenGodStat {
 	透: number;
 	藏: number;
 	共: number;
-}
-
-function parseIsoLikeDate(s: string): { year: number; month: number; day: number } | null {
-	const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s.trim());
-	return m ? { year: Number(m[1]), month: Number(m[2]), day: Number(m[3]) } : null;
-}
-
-function pad2(n: number | string | undefined): string {
-	return String(n ?? 0).padStart(2, "0");
-}
-
-/** Upstream `fmtDt` output ("YYYY-MM-DD HH:MM", always :00 seconds) → ISO 8601 */
-function fmtDtToIso(s: string): string {
-	const m = /^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/.exec(s.trim());
-	if (!m) return s;
-	return `${m[1] ?? ""}-${pad2(m[2])}-${pad2(m[3])}T${pad2(m[4])}:${pad2(m[5])}:${pad2(m[6])}`;
-}
-
-/** Upstream `八字.公历` ("YYYY年M月D日 HH:MM:SS" from tyme4ts) → ISO 8601 */
-function chineseDateTimeToIso(s: string): string {
-	const m = /^(\d{4})年(\d{1,2})月(\d{1,2})日\s+(\d{1,2}):(\d{1,2}):(\d{1,2})$/.exec(s.trim());
-	if (!m) return s;
-	return `${m[1] ?? ""}-${pad2(m[2])}-${pad2(m[3])}T${pad2(m[4])}:${pad2(m[5])}:${pad2(m[6])}`;
-}
-
-function todayIsoDate(): string {
-	const d = new Date();
-	const mm = String(d.getMonth() + 1).padStart(2, "0");
-	const dd = String(d.getDate()).padStart(2, "0");
-	return `${d.getFullYear()}-${mm}-${dd}`;
-}
-
-function actualAgeAt(
-	birthYear: number,
-	birthMonth: number,
-	birthDay: number,
-	atYear: number,
-	atMonth: number,
-	atDay: number,
-): number {
-	const before = atMonth < birthMonth || (atMonth === birthMonth && atDay < birthDay);
-	return atYear - birthYear - (before ? 1 : 0);
 }
 
 export function computeTenGodStats(pillars: {
