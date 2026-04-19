@@ -468,9 +468,7 @@ describe("tool description / inputShape — regression against stale claims", ()
 		// Guarantee it is declared on inputShape AND flagged as a caller INPUT in
 		// its describe, so an LLM reading the schema cannot miss it.
 		expect(Object.hasOwn(inputShape, "referenceDate")).toBe(true);
-		const desc = (inputShape.referenceDate._def.description ??
-			inputShape.referenceDate.description ??
-			"") as string;
+		const desc = inputShape.referenceDate.description ?? "";
 		expect(desc).toMatch(/INPUT/);
 		expect(desc).toMatch(/referenceDateUsed/);
 	});
