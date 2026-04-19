@@ -33,10 +33,10 @@
     "LICENSE"
   ],
   "scripts": {
-    "dev": "bun run src/http.ts",
-    "dev:stdio": "bun run src/stdio.ts",
+    "dev": "bun run src/transports/http.ts",
+    "dev:stdio": "bun run src/transports/stdio.ts",
     "dev:worker": "wrangler dev",
-    "build": "bun build src/http.ts --target=bun --outdir=dist --outfile=http.js && bun build src/stdio.ts --target=bun --outdir=dist --outfile=stdio.js",
+    "build": "bun build src/transports/http.ts --target=bun --outdir=dist --outfile=http.js && bun build src/transports/stdio.ts --target=bun --outdir=dist --outfile=stdio.js",
     "start": "bun run dist/http.js",
     "start:stdio": "bun run dist/stdio.js",
     "deploy": "wrangler deploy --env=\"\"",

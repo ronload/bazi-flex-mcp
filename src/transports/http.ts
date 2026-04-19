@@ -1,6 +1,6 @@
 import { StreamableHTTPTransport } from "@hono/mcp";
 import { Hono } from "hono";
-import { createServer } from "./mcp/server.js";
+import { createServer } from "../mcp/server.js";
 
 const app = new Hono();
 

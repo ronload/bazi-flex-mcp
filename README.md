@@ -29,7 +29,7 @@ Clone the repo and point Claude Desktop's MCP config at it:
   "mcpServers": {
     "bazi-flex": {
       "command": "bun",
-      "args": ["run", "/absolute/path/to/bazi-flex-mcp/src/stdio.ts"]
+      "args": ["run", "/absolute/path/to/bazi-flex-mcp/src/transports/stdio.ts"]
     }
   }
 }
@@ -50,7 +50,7 @@ bun dev
 ### Inspector
 
 ```bash
-bunx @modelcontextprotocol/inspector bun run src/stdio.ts
+bunx @modelcontextprotocol/inspector bun run src/transports/stdio.ts
 ```
 
 ## The `getBaziChart` tool
