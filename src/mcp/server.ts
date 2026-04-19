@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerGetBaziChart } from "./tools/getBaziChart.js";
+import { registerGetBaziChart } from "../tools/getBaziChart/index.js";
 
 export function createServer(): McpServer {
 	const server = new McpServer({
