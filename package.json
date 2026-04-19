@@ -1,0 +1,59 @@
+{
+  "name": "bazi-flex-mcp",
+  "version": "0.0.1",
+  "description": "Flexible Bazi (八字) MCP server — computes charts with or without birth hour. Built on shunshi-bazi-core.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Ronald <ron910517@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ronload/bazi-flex-mcp.git"
+  },
+  "homepage": "https://github.com/ronload/bazi-flex-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/ronload/bazi-flex-mcp/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "bazi",
+    "八字",
+    "四柱推命",
+    "四柱八字",
+    "chinese-astrology",
+    "fortune-telling",
+    "saju"
+  ],
+  "bin": {
+    "bazi-flex-mcp": "./dist/stdio.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "bun run src/http.ts",
+    "dev:stdio": "bun run src/stdio.ts",
+    "build": "bun build src/http.ts --target=bun --outdir=dist --outfile=http.js && bun build src/stdio.ts --target=bun --outdir=dist --outfile=stdio.js",
+    "start": "bun run dist/http.js",
+    "start:stdio": "bun run dist/stdio.js",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "shunshi-bazi-core": "^0.1.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "bun": ">=1.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
