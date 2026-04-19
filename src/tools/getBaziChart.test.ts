@@ -5,6 +5,8 @@ import {
 	computeLiunian,
 	computeTenGodStats,
 	enrichResult,
+	inputShape,
+	toolDescriptionLines,
 } from "./getBaziChart.js";
 
 describe("computeTenGodStats", () => {
@@ -447,5 +449,36 @@ describe("enrichResult", () => {
 			expect(yun.落空亡.年柱旬).toBe(yearKong.has(yun.地支));
 			expect(yun.所在旬空亡).toHaveLength(2);
 		}
+	});
+});
+
+describe("tool description / inputShape — regression against stale claims", () => {
+	const description = toolDescriptionLines.join("\n");
+
+	test("description does not claim 日柱.主星 is 元男 / 元女", () => {
+		// The description must NOT tell consumers 日柱.主星 === "元男"/"元女" —
+		// the actual output is null + isDayMaster. If those strings ever
+		// reappear as a positive claim, update both sides at once.
+		expect(description).not.toMatch(/主星[^。\n]*(元男|元女)/);
+		expect(description).not.toMatch(/===\s*["']元[男女]/);
+	});
+
+	test("referenceDate is an actual input (not just echoed from server time)", () => {
+		// Regression: earlier feedback assumed referenceDate was server-side only.
+		// Guarantee it is declared on inputShape AND flagged as a caller INPUT in
+		// its describe, so an LLM reading the schema cannot miss it.
+		expect(Object.hasOwn(inputShape, "referenceDate")).toBe(true);
+		const desc = (inputShape.referenceDate._def.description ??
+			inputShape.referenceDate.description ??
+			"") as string;
+		expect(desc).toMatch(/INPUT/);
+		expect(desc).toMatch(/referenceDateUsed/);
+	});
+
+	test("description空亡段承诺了大运也使用 所在旬空亡 / 落空亡 结构", () => {
+		// Keeps description aligned with the 大运 remap above — if the code path
+		// regresses (back to flat 空亡 string), this reminds us to update here too.
+		expect(description).toMatch(/大运[^。\n]*所在旬空亡/);
+		expect(description).toMatch(/大运[^。\n]*落空亡|落空亡[^。\n]*大运/);
 	});
 });
