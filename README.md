@@ -14,7 +14,7 @@ Early WIP. Not published to npm yet. The scaffold ships the full-time tool today
 
 - [x] Full-time Bazi charting — `getBaziChart` (thin wrapper over `shunshi-bazi-core`)
 - [x] stdio transport — for Claude Desktop and other local MCP clients
-- [x] Streamable HTTP transport — for remote hosts (Railway, mobile Claude)
+- [x] Streamable HTTP transport — for remote hosts (Cloudflare Workers, mobile Claude)
 - [ ] Partial-time mode — chart computation when the birth hour is unknown
 - [ ] OAuth / auth on HTTP transport
 
@@ -42,12 +42,10 @@ Restart Claude Desktop. You should see `getBaziChart` in the tool list.
 ```bash
 bun install
 bun dev
-# → MCP server listening on http://localhost:3000
+# → serves on http://localhost:3000
 #   /health  — health check
 #   /mcp     — MCP Streamable HTTP endpoint
 ```
-
-Set `PORT` to override the default port.
 
 ### Inspector
 
@@ -76,9 +74,53 @@ Computes a full Bazi chart from a complete birth time.
 ```bash
 bun install
 bun run typecheck
-bun dev           # HTTP on :3000
-bun run dev:stdio # stdio
+bun dev            # HTTP on :3000 (Bun)
+bun run dev:worker # HTTP on :8787 via local workerd (Wrangler)
+bun run dev:stdio  # stdio
 ```
+
+## Deployment (Cloudflare Workers)
+
+The HTTP transport is built on Hono + Web Standards, so it runs on Cloudflare Workers without code changes. This repo ships a `wrangler.jsonc` with two deploy modes.
+
+### Deploy your own instance
+
+```bash
+bunx wrangler login   # first time only
+bun run deploy
+```
+
+Your worker will be served from `https://bazi-flex-mcp.<your-subdomain>.workers.dev`, with MCP at `/mcp`.
+
+### Custom domain
+
+To bind the worker to a domain managed on Cloudflare, override the `production` env in `wrangler.jsonc`:
+
+```jsonc
+"env": {
+  "production": {
+    "name": "your-worker-name",
+    "routes": [
+      { "pattern": "bazi.example.com", "custom_domain": true }
+    ]
+  }
+}
+```
+
+Then:
+
+```bash
+bun run deploy:prod
+```
+
+Wrangler will create the DNS record and provision the certificate automatically.
+
+### Auto-deploy on push
+
+`.github/workflows/deploy.yml` runs typecheck + tests on every push to `main`, then deploys with `deploy:prod`. Configure these repo secrets:
+
+- `CLOUDFLARE_API_TOKEN` — create at https://dash.cloudflare.com/profile/api-tokens with `Workers Scripts: Edit`, `Workers Routes: Edit`, `DNS: Edit` on your zone, plus `Account Settings: Read`
+- `CLOUDFLARE_ACCOUNT_ID` — from the Cloudflare dashboard sidebar
 
 ## Tech stack
 
