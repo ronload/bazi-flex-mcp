@@ -17,6 +17,24 @@ function parseIsoLikeDate(s: string): { year: number; month: number; day: number
 	return m ? { year: Number(m[1]), month: Number(m[2]), day: Number(m[3]) } : null;
 }
 
+function pad2(n: number | string | undefined): string {
+	return String(n ?? 0).padStart(2, "0");
+}
+
+/** Upstream `fmtDt` output ("YYYY-MM-DD HH:MM", always :00 seconds) → ISO 8601 */
+function fmtDtToIso(s: string): string {
+	const m = /^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/.exec(s.trim());
+	if (!m) return s;
+	return `${m[1] ?? ""}-${pad2(m[2])}-${pad2(m[3])}T${pad2(m[4])}:${pad2(m[5])}:${pad2(m[6])}`;
+}
+
+/** Upstream `八字.公历` ("YYYY年M月D日 HH:MM:SS" from tyme4ts) → ISO 8601 */
+function chineseDateTimeToIso(s: string): string {
+	const m = /^(\d{4})年(\d{1,2})月(\d{1,2})日\s+(\d{1,2}):(\d{1,2}):(\d{1,2})$/.exec(s.trim());
+	if (!m) return s;
+	return `${m[1] ?? ""}-${pad2(m[2])}-${pad2(m[3])}T${pad2(m[4])}:${pad2(m[5])}:${pad2(m[6])}`;
+}
+
 function todayIsoDate(): string {
 	const d = new Date();
 	const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -83,6 +101,7 @@ export function enrichResult(
 	const refYear = Number(referenceDate.slice(0, 4));
 	const startMd = parseIsoLikeDate(bazi.起运日期);
 	const tenGodStats = computeTenGodStats(bazi.柱位详细);
+	const solarIso = chineseDateTimeToIso(bazi.公历);
 
 	return {
 		...result,
@@ -90,8 +109,21 @@ export function enrichResult(
 			referenceDateUsed: referenceDate,
 			scoringMethod: SCORING_METHOD,
 		},
+		输入: {
+			...result.输入,
+			公历: fmtDtToIso(result.输入.公历),
+		},
+		真太阳时: result.真太阳时
+			? {
+					...result.真太阳时,
+					钟表时间: fmtDtToIso(result.真太阳时.钟表时间),
+					真太阳时: solarIso,
+					修正秒数: Math.round(result.真太阳时.修正分钟 * 60),
+				}
+			: undefined,
 		八字: {
 			...bazi,
+			公历: solarIso,
 			柱位详细: {
 				...bazi.柱位详细,
 				日柱: {
@@ -158,6 +190,8 @@ export function registerGetBaziChart(server: McpServer): void {
 				'- `八字.大运[].日主关系` is `null` when there is no relation (previously `""`).',
 				"- `八字.大运[].当前` is computed from `meta.referenceDateUsed` (defaults to today). Override via the `referenceDate` input for historical or hypothetical scenarios.",
 				"- `meta.scoringMethod` documents how `八字.五行分值` is computed, so consumers do not need to guess the weighting scheme.",
+				"- Time strings (`输入.公历`, `真太阳时.钟表时间`, `真太阳时.真太阳时`, `八字.公历`) are all ISO 8601 with second precision (`YYYY-MM-DDTHH:MM:SS`). `真太阳时.修正分钟` is the original decimal-minute correction; `真太阳时.修正秒数` is the same value as a rounded integer number of seconds.",
+				'- 空亡 is surfaced in two complementary ways. `柱位详细.{柱}.空亡` (e.g. `"申酉"`) lists the two branches void in that pillar\'s own 旬 — pure reference data, does not imply this pillar is void. Whether a pillar is treated as falling into 空亡 by traditional practice is encoded by `"空亡"` appearing in `柱位详细.{柱}.神煞`: upstream tags a pillar when its earth branch is in (日柱旬空 ∪ 年柱旬空). If you specifically want strict modern `以日起空亡` (only the day-pillar\'s 旬空 counts), check each pillar\'s branch against `日柱.空亡` yourself and ignore the 神煞 tag.',
 				'- `八字.起运` is the precise duration from birth to the first decade cycle (e.g., `"6年7月22日起运"`), derived from the solar-term distance. `八字.起运日期` is the corresponding Gregorian date.',
 				"- Each `八字.大运` entry exposes `起始虚岁` (East-Asian nominal age; equals the original `起始年龄`) and `起始实岁` (completed years at that decade-cycle start, derived from `起运日期` aligned to the birth month/day). They typically differ by 1-2.",
 			].join("\n"),

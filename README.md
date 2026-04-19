@@ -82,6 +82,14 @@ This server is a thin wrapper around [`shunshi-bazi-core`](https://www.npmjs.com
 - `八字.大运[].当前` is recomputed against `meta.referenceDateUsed` so historical / hypothetical scenarios (e.g. "if I look at this chart at age 30") are supported.
 - `meta.referenceDateUsed` — echoes the effective reference date.
 - `meta.scoringMethod` — documents how `八字.五行分值` is computed (see below).
+- All time strings (`输入.公历`, `真太阳时.钟表时间`, `真太阳时.真太阳时`, `八字.公历`) are normalised to ISO 8601 with second precision (`YYYY-MM-DDTHH:MM:SS`). The raw engine uses a mix of minute-precision (`"YYYY-MM-DD HH:MM"`) and Chinese-formatted second-precision (`"YYYY年M月D日 HH:MM:SS"`); this server unifies them so consumers do not have to reconcile formats or lose seconds. `真太阳时.修正秒数` is added as an integer companion to `修正分钟`.
+
+### 空亡 (empty death) — two complementary surfaces
+
+`shunshi-bazi-core` exposes 空亡 in two places with different semantics. The wrapper keeps both and documents the distinction:
+
+- `柱位详细.{柱}.空亡` — the two earth branches that are void in **that pillar's own 旬** (e.g. 壬午 is in 甲戌 旬 → `"申酉"`). This is pure reference data; it does not mean the pillar itself is falling into 空亡.
+- `柱位详细.{柱}.神煞` containing `"空亡"` — upstream tags a pillar when its own earth branch falls into the **union of 日柱旬空 and 年柱旬空**. This bakes in two traditional conventions at once: modern practice "以日起空亡" uses day-xun; some older schools use year-xun. If you specifically want strict modern behaviour, ignore the `神煞` tag and check each pillar's branch against `日柱.空亡` yourself.
 
 ### Wuxing score method
 

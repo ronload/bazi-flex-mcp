@@ -120,4 +120,35 @@ describe("enrichResult", () => {
 			expect(v).not.toBe("元女");
 		}
 	});
+
+	test("normalises time strings to ISO 8601 with second precision", () => {
+		const raw = getBaziChart({ ...sampleInput, city: "北京" });
+		const enriched = enrichResult(raw, birth, "2026-04-19");
+		const isoRe = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/;
+
+		expect(enriched.输入.公历).toMatch(isoRe);
+		expect(enriched.八字.公历).toMatch(isoRe);
+		expect(enriched.真太阳时).toBeDefined();
+		expect(enriched.真太阳时?.钟表时间).toMatch(isoRe);
+		expect(enriched.真太阳时?.真太阳时).toMatch(isoRe);
+
+		// 真太阳时 must equal 八字.公历 (both are the true solar time)
+		expect(enriched.真太阳时?.真太阳时).toBe(enriched.八字.公历);
+	});
+
+	test("adds 修正秒数 rounded from 修正分钟", () => {
+		const raw = getBaziChart({ ...sampleInput, city: "北京" });
+		const enriched = enrichResult(raw, birth, "2026-04-19");
+		expect(enriched.真太阳时).toBeDefined();
+		const 修正分钟 = enriched.真太阳时?.修正分钟 ?? 0;
+		expect(enriched.真太阳时?.修正秒数).toBe(Math.round(修正分钟 * 60));
+	});
+
+	test("omits 真太阳时 block when no location is provided", () => {
+		const raw = getBaziChart(sampleInput);
+		const enriched = enrichResult(raw, birth, "2026-04-19");
+		expect(enriched.真太阳时).toBeUndefined();
+		// 八字.公历 still normalised even without 真太阳时
+		expect(enriched.八字.公历).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);
+	});
 });
