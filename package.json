@@ -4,7 +4,7 @@
   "description": "Flexible Bazi (八字) MCP server — computes charts with or without birth hour. Built on shunshi-bazi-core.",
   "type": "module",
   "license": "MIT",
-  "author": "Ronald <ron910517@gmail.com>",
+  "author": "ronload <ron910517@gmail.com>",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ronload/bazi-flex-mcp.git"
