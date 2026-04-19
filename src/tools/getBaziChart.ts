@@ -1,6 +1,8 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getBaziChart } from "shunshi-bazi-core";
 import { z } from "zod";
+import { BRANCH_HIDDEN, PILLAR_KEYS, type PillarKey, STEM_ELEMENT } from "../ganzhi/data.js";
+import { elementRelation, sexagenaryOfYear, tenStar } from "../ganzhi/index.js";
 
 type GetBaziChartResult = ReturnType<typeof getBaziChart>;
 type Pillars = GetBaziChartResult["八字"]["柱位详细"];
@@ -89,9 +91,6 @@ export function computeTenGodStats(pillars: {
 // TODO(upstream): shunshi-bazi-core v0.2+ 的 roadmap 可能暴露帶 `labels`
 // 的 relation API，或直接在 output 帶 pair。屆時移除本段、改用 upstream
 // 的 pair 輸出。參考：node_modules/shunshi-bazi-core/README.md 動態神煞段。
-
-export type PillarKey = "年" | "月" | "日" | "时";
-const PILLAR_KEYS: readonly PillarKey[] = ["年", "月", "日", "时"] as const;
 
 export type RelationType =
 	| "相合"
@@ -221,87 +220,6 @@ export function computePillarRelations(bazi: {
 // upstream。屆時流年界點也會由上游精確處理(立春),本地 `(year-4)%60`
 // 算出的是「立春後主體那一年」，元旦~立春約 5 週屬於前一干支年。
 
-const STEM_ORDER = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"] as const;
-const BRANCH_ORDER = [
-	"子",
-	"丑",
-	"寅",
-	"卯",
-	"辰",
-	"巳",
-	"午",
-	"未",
-	"申",
-	"酉",
-	"戌",
-	"亥",
-] as const;
-
-const STEM_ELEMENT: Record<string, "木" | "火" | "土" | "金" | "水"> = {
-	甲: "木",
-	乙: "木",
-	丙: "火",
-	丁: "火",
-	戊: "土",
-	己: "土",
-	庚: "金",
-	辛: "金",
-	壬: "水",
-	癸: "水",
-};
-const STEM_YANG: Record<string, boolean> = {
-	甲: true,
-	乙: false,
-	丙: true,
-	丁: false,
-	戊: true,
-	己: false,
-	庚: true,
-	辛: false,
-	壬: true,
-	癸: false,
-};
-/** 本气/中气/余气 order — matches tyme4ts `EarthBranch.getHideHeavenStems()`. */
-const BRANCH_HIDDEN: Record<string, string[]> = {
-	子: ["癸"],
-	丑: ["己", "癸", "辛"],
-	寅: ["甲", "丙", "戊"],
-	卯: ["乙"],
-	辰: ["戊", "乙", "癸"],
-	巳: ["丙", "庚", "戊"],
-	午: ["丁", "己"],
-	未: ["己", "乙", "丁"],
-	申: ["庚", "壬", "戊"],
-	酉: ["辛"],
-	戌: ["戊", "辛", "丁"],
-	亥: ["壬", "甲"],
-};
-
-const GEN_NEXT: Record<string, string> = { 木: "火", 火: "土", 土: "金", 金: "水", 水: "木" };
-const CTRL_NEXT: Record<string, string> = { 木: "土", 土: "水", 水: "火", 火: "金", 金: "木" };
-
-function tenStar(dayMaster: string, target: string): string {
-	const dE = STEM_ELEMENT[dayMaster];
-	const tE = STEM_ELEMENT[target];
-	const dY = STEM_YANG[dayMaster];
-	const tY = STEM_YANG[target];
-	if (!dE || !tE || dY === undefined || tY === undefined) return "?";
-	const same = dY === tY;
-	if (dE === tE) return same ? "比肩" : "劫财";
-	if (GEN_NEXT[dE] === tE) return same ? "食神" : "伤官";
-	if (GEN_NEXT[tE] === dE) return same ? "偏印" : "正印";
-	if (CTRL_NEXT[dE] === tE) return same ? "偏财" : "正财";
-	if (CTRL_NEXT[tE] === dE) return same ? "七杀" : "正官";
-	return "?";
-}
-
-function sexagenaryOfYear(year: number): { 干支: string; 天干: string; 地支: string } {
-	const idx = (((year - 4) % 60) + 60) % 60;
-	const 天干 = STEM_ORDER[idx % 10] ?? "";
-	const 地支 = BRANCH_ORDER[idx % 12] ?? "";
-	return { 干支: `${天干}${地支}`, 天干, 地支 };
-}
-
 export interface LiunianEntry {
 	年份: number;
 	干支: string;
@@ -343,24 +261,6 @@ export function computeLiunian(
 // is made here — that is intentionally left to the consumer. These helpers
 // just surface the raw inputs (month-command relation, root presence,
 // transparent/hidden balance) so an LLM does not have to recompute them.
-
-const ELEMENT_RELATION_LABEL: Record<string, string> = {
-	同我: "同我",
-	生我: "生我",
-	我生: "我生",
-	我克: "我克",
-	克我: "克我",
-};
-
-function elementRelation(from: string, to: string): keyof typeof ELEMENT_RELATION_LABEL | null {
-	if (!from || !to) return null;
-	if (from === to) return "同我";
-	if (GEN_NEXT[to] === from) return "生我";
-	if (GEN_NEXT[from] === to) return "我生";
-	if (CTRL_NEXT[from] === to) return "我克";
-	if (CTRL_NEXT[to] === from) return "克我";
-	return null;
-}
 
 export interface DecisionAids {
 	日主得令: {
