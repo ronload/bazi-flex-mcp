@@ -57,17 +57,44 @@ bunx @modelcontextprotocol/inspector bun run src/stdio.ts
 
 Computes a full Bazi chart from a complete birth time.
 
-| Field       | Type           | Required | Notes                               |
-| ----------- | -------------- | -------- | ----------------------------------- |
-| `year`      | int            | yes      | Gregorian                           |
-| `month`     | int 1-12       | yes      |                                     |
-| `day`       | int 1-31       | yes      |                                     |
-| `hour`      | int 0-23       | yes      |                                     |
-| `minute`    | int 0-59       | no       | default 0                           |
-| `gender`    | 0 \| 1         | yes      | 0 = female, 1 = male                |
-| `city`      | string         | no       | enables true-solar-time correction  |
-| `longitude` | number (°E)    | no       |                                     |
-| `latitude`  | number (°N)    | no       |                                     |
+### Input
+
+| Field           | Type           | Required | Notes                                                                              |
+| --------------- | -------------- | -------- | ---------------------------------------------------------------------------------- |
+| `year`          | int            | yes      | Gregorian                                                                          |
+| `month`         | int 1-12       | yes      |                                                                                    |
+| `day`           | int 1-31       | yes      |                                                                                    |
+| `hour`          | int 0-23       | yes      |                                                                                    |
+| `minute`        | int 0-59       | no       | default 0                                                                          |
+| `gender`        | 0 \| 1         | yes      | 0 = female, 1 = male                                                               |
+| `city`          | string         | no       | enables true-solar-time correction                                                 |
+| `longitude`     | number (°E)    | no       |                                                                                    |
+| `latitude`      | number (°N)    | no       |                                                                                    |
+| `referenceDate` | `YYYY-MM-DD`   | no       | decides which decade-cycle is marked `当前`; defaults to today                      |
+
+### Output shape (post-processing on top of `shunshi-bazi-core`)
+
+This server is a thin wrapper around [`shunshi-bazi-core`](https://www.npmjs.com/package/shunshi-bazi-core). The raw engine output is kept intact and augmented with a few fields to make the chart more LLM-friendly:
+
+- `八字.柱位详细.日柱.主星` is `null` (the day-master carries no ten-god against itself). Identify the day-pillar via `日柱.isDayMaster === true`; `日柱.label` is `"日主"` for display. The raw engine puts `"元男"` / `"元女"` here — this server replaces that with a cleaner signal.
+- `八字.十神统计` — aggregate counts keyed by ten-god, each `{ 透, 藏, 共 }`. `透` comes from year/month/hour pillars' `主星`; `藏` comes from all four pillars' `副星` (earth-branch hidden stems). The day-master itself is excluded.
+- `八字.大运[].日主关系` is `null` when there is no day-master-to-decade-stem relation (instead of `""`).
+- `八字.大运[].当前` is recomputed against `meta.referenceDateUsed` so historical / hypothetical scenarios (e.g. "if I look at this chart at age 30") are supported.
+- `meta.referenceDateUsed` — echoes the effective reference date.
+- `meta.scoringMethod` — documents how `八字.五行分值` is computed (see below).
+
+### Wuxing score method
+
+`八字.五行分值` uses `shunshi-bazi-core`'s built-in weighting:
+
+| Source                         | Weight                         |
+| ------------------------------ | ------------------------------ |
+| Each heavenly stem (4 pillars) | 1.0                            |
+| Earth-branch 本气 (primary)    | 1.0                            |
+| Earth-branch 中气 (secondary)  | 0.5                            |
+| Earth-branch 余气 (residual)   | 0.3                            |
+
+No month-command bonus and no transparent-stem bonus are applied. The raw numbers are a measure of **relative presence**, not classical 旺衰 strength — a higher score does not automatically mean the day-master is strong. Consumers that need 旺衰 judgement should factor in month-command, 得地/失地, 得势/失势 themselves. `meta.scoringMethod` repeats this information in machine-readable form.
 
 ## Development
 
