@@ -477,6 +477,30 @@ const SCORING_METHOD = {
 	upstream: "shunshi-bazi-core",
 } as const;
 
+/**
+ * Restructure a pillar's 空亡 surface:
+ *   - original `空亡` (joined-string of the pillar's own 旬 voids) → `所在旬空亡: string[]`
+ *   - new `落空亡: { 日柱旬, 年柱旬 }` — does this pillar's earth branch fall into
+ *     day-xun void / year-xun void. This mirrors the boolean test that upstream
+ *     applies when injecting the `"空亡"` tag into 神煞, but surfaces the result
+ *     as a structured field so consumers don't conflate it with `所在旬空亡`.
+ */
+function remapPillarKongWang<P extends { 地支: string; 空亡: string }>(
+	pillar: P,
+	dayKongSet: ReadonlySet<string>,
+	yearKongSet: ReadonlySet<string>,
+): Omit<P, "空亡"> & { 所在旬空亡: string[]; 落空亡: { 日柱旬: boolean; 年柱旬: boolean } } {
+	const { 空亡, ...rest } = pillar;
+	return {
+		...rest,
+		所在旬空亡: [...空亡],
+		落空亡: {
+			日柱旬: dayKongSet.has(pillar.地支),
+			年柱旬: yearKongSet.has(pillar.地支),
+		},
+	};
+}
+
 export function enrichResult(
 	result: GetBaziChartResult,
 	birth: { year: number; month: number; day: number },
@@ -492,6 +516,12 @@ export function enrichResult(
 	const liunian = computeLiunian(bazi.日主, effectiveLiunianRange, refYear);
 	const decisionAids = computeDecisionAids(bazi, tenGodStats);
 	const solarIso = chineseDateTimeToIso(bazi.公历);
+
+	// 旬空 — derive from per-pillar 空亡 strings (each is already a 2-char xun-void pair).
+	const dayKong = [...bazi.柱位详细.日柱.空亡];
+	const yearKong = [...bazi.柱位详细.年柱.空亡];
+	const dayKongSet = new Set(dayKong);
+	const yearKongSet = new Set(yearKong);
 
 	return {
 		...result,
@@ -514,14 +544,17 @@ export function enrichResult(
 		八字: {
 			...bazi,
 			公历: solarIso,
+			旬空: { 日柱旬空: dayKong, 年柱旬空: yearKong },
 			柱位详细: {
-				...bazi.柱位详细,
+				年柱: remapPillarKongWang(bazi.柱位详细.年柱, dayKongSet, yearKongSet),
+				月柱: remapPillarKongWang(bazi.柱位详细.月柱, dayKongSet, yearKongSet),
 				日柱: {
-					...bazi.柱位详细.日柱,
+					...remapPillarKongWang(bazi.柱位详细.日柱, dayKongSet, yearKongSet),
 					主星: null,
 					label: "日主",
 					isDayMaster: true,
 				},
+				时柱: remapPillarKongWang(bazi.柱位详细.时柱, dayKongSet, yearKongSet),
 			},
 			十神统计: tenGodStats,
 			柱间关系: pillarRelations,
@@ -566,7 +599,7 @@ const inputShape = {
 		.regex(/^\d{4}-\d{1,2}-\d{1,2}$/)
 		.optional()
 		.describe(
-			"ISO date (YYYY-MM-DD) used to decide which decade-cycle is marked `当前`. Defaults to system today. Echoed back as `meta.referenceDateUsed`.",
+			"Optional ISO date (YYYY-MM-DD). Accept this as an INPUT from the caller — pass it explicitly for historical reconstructions or hypothetical 'what if I looked at this chart at time T' queries. Defaults to system today when omitted. Controls which `八字.大运[].当前` is true and which `八字.流年[].当前` is true. Echoed back as `meta.referenceDateUsed`.",
 		),
 	liunianStart: z
 		.number()
@@ -590,6 +623,7 @@ export function registerGetBaziChart(server: McpServer): void {
 				"",
 				"Output notes:",
 				'- `八字.柱位详细.日柱.主星` is `null` (日主 carries no ten-god against itself). Identify the day-pillar via `日柱.isDayMaster === true`; `日柱.label` is `"日主"` for display. Only year/month/hour pillars carry real ten-god strings in `主星`.',
+				"- `八字.柱位详细.日柱.副星` intentionally still contains ten-god strings (the day-pillar's earth-branch hidden stems carry real ten-god relations to the day-master — e.g. 辛 in 酉 is 七杀 to 乙 day-master). Only `主星` is nulled because 日主 has no ten-god against itself; 副星 is unaffected.",
 				"- `八字.十神统计[十神]` aggregates ten-god counts as `{ 透, 藏, 共 }`. `透` counts from year/month/hour pillars' `主星`; `藏` counts from all four pillars' `副星` (earth-branch hidden stems). 日主 itself is excluded.",
 				'- `八字.柱间关系` lists pair-wise (or triple-wise, for 三刑) relations between the four pillars, derived from upstream `刑冲合会`. Each entry is `{ kind: "天干"|"地支", type: "相合"|"相冲"|"相害"|"相破"|"暗合"|"自刑"|"三刑"|"克", pillars: [年|月|日|时, ...], 干支: [...], raw }`. When two pillars share the same stem/branch (e.g. two 乙 in month and day), a single upstream relation expands to multiple entries covering each possible pillar pair — the ambiguity is surfaced rather than hidden.',
 				"- `八字.决策辅助` surfaces three derived metrics so consumers do not recompute them: `日主得令` (day-master element relation to month-command element + `得令` boolean), `日主根气` (day-master-element presence across all four earth-branch hidden-stems using canonical 本/中/余 weights 1.0/0.5/0.3), and `透藏平衡` (比劫 vs 异类 transparent/hidden counts). These are raw inputs — no 旺衰/格局/用神 judgement is baked in. Feed them into your own reasoning rules.",
@@ -598,7 +632,7 @@ export function registerGetBaziChart(server: McpServer): void {
 				"- `八字.大运[].当前` is computed from `meta.referenceDateUsed` (defaults to today). Override via the `referenceDate` input for historical or hypothetical scenarios.",
 				"- `meta.scoringMethod` documents how `八字.五行分值` is computed, so consumers do not need to guess the weighting scheme.",
 				"- Time strings (`输入.公历`, `真太阳时.钟表时间`, `真太阳时.真太阳时`, `八字.公历`) are all ISO 8601 with second precision (`YYYY-MM-DDTHH:MM:SS`). `真太阳时.修正分钟` is the original decimal-minute correction; `真太阳时.修正秒数` is the same value as a rounded integer number of seconds.",
-				'- 空亡 is surfaced in two complementary ways. `柱位详细.{柱}.空亡` (e.g. `"申酉"`) lists the two branches void in that pillar\'s own 旬 — pure reference data, does not imply this pillar is void. Whether a pillar is treated as falling into 空亡 by traditional practice is encoded by `"空亡"` appearing in `柱位详细.{柱}.神煞`: upstream tags a pillar when its earth branch is in (日柱旬空 ∪ 年柱旬空). If you specifically want strict modern `以日起空亡` (only the day-pillar\'s 旬空 counts), check each pillar\'s branch against `日柱.空亡` yourself and ignore the 神煞 tag.',
+				"- 空亡 is surfaced as three complementary fields (this server restructures upstream's ambiguous single-string surface). `八字.旬空 = { 日柱旬空: [...], 年柱旬空: [...] }` is the top-level index of void branches for the two traditional reference 旬s. Each pillar exposes `所在旬空亡: string[]` (the two branches void in *that pillar's own* 旬 — pure reference, does NOT imply this pillar is void) and `落空亡: { 日柱旬: boolean, 年柱旬: boolean }` (does this pillar's earth branch actually fall into day-xun / year-xun void). Prefer `落空亡` as the authoritative \"is this pillar in 空亡\" signal; upstream's `神煞` array still contains a `\"空亡\"` string for compatibility but it's the boolean-OR of `落空亡.日柱旬` and `落空亡.年柱旬`. For strict modern 以日起空亡 convention, use `落空亡.日柱旬` alone.",
 				'- `八字.起运` is the precise duration from birth to the first decade cycle (e.g., `"6年7月22日起运"`), derived from the solar-term distance. `八字.起运日期` is the corresponding Gregorian date.',
 				"- Each `八字.大运` entry exposes `起始虚岁` (East-Asian nominal age; equals the original `起始年龄`) and `起始实岁` (completed years at that decade-cycle start, derived from `起运日期` aligned to the birth month/day). They typically differ by 1-2.",
 			].join("\n"),

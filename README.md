@@ -99,12 +99,26 @@ Several enrichments above reach outside what upstream `shunshi-bazi-core@0.1` pr
 
 Grep the codebase for `TODO(upstream)` to find exactly where the swaps will happen.
 
-### 空亡 (empty death) — two complementary surfaces
+### 空亡 (empty death) — structured surface
 
-`shunshi-bazi-core` exposes 空亡 in two places with different semantics. The wrapper keeps both and documents the distinction:
+Upstream packed 空亡 into a single per-pillar string (`柱.空亡`) plus a tag inside `柱.神煞`. Because the two surfaces used different semantics (reference data vs. void judgement based on a union of 日柱旬 and 年柱旬), consumer LLMs conflated them. This server restructures 空亡 into three explicit fields:
 
-- `柱位详细.{柱}.空亡` — the two earth branches that are void in **that pillar's own 旬** (e.g. 壬午 is in 甲戌 旬 → `"申酉"`). This is pure reference data; it does not mean the pillar itself is falling into 空亡.
-- `柱位详细.{柱}.神煞` containing `"空亡"` — upstream tags a pillar when its own earth branch falls into the **union of 日柱旬空 and 年柱旬空**. This bakes in two traditional conventions at once: modern practice "以日起空亡" uses day-xun; some older schools use year-xun. If you specifically want strict modern behaviour, ignore the `神煞` tag and check each pillar's branch against `日柱.空亡` yourself.
+- **`八字.旬空`** — top-level index of the void branches for the two traditional reference 旬s:
+
+  ```json
+  "旬空": { "日柱旬空": ["午", "未"], "年柱旬空": ["申", "酉"] }
+  ```
+
+- **`柱位详细.{柱}.所在旬空亡: string[]`** — the two branches void in *that pillar's own* 旬. Reference data only; does **not** mean the pillar itself is falling into 空亡.
+- **`柱位详细.{柱}.落空亡: { 日柱旬: boolean, 年柱旬: boolean }`** — does this pillar's earth branch actually fall into day-xun void / year-xun void. **This is the authoritative "is this pillar in 空亡" signal.**
+
+Conventions:
+
+- Modern practice (以日起空亡): use `落空亡.日柱旬` alone.
+- Traditional schools using year-xun: use `落空亡.年柱旬`.
+- Upstream's `神煞` array still contains a `"空亡"` string for back-compat; it equals the boolean-OR of the two `落空亡` flags.
+
+Upstream's original `柱.空亡` single-string field has been removed from the wrapper output — the structured fields above supersede it.
 
 ### Wuxing score method
 

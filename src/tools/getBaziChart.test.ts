@@ -227,6 +227,66 @@ describe("enrichResult", () => {
 		expect(entries.every((e) => e.干支.length === 2)).toBe(true);
 	});
 
+	test("restructures 空亡 with top-level 旬空 index and per-pillar 落空亡", () => {
+		// 2002-05-17 06:00 男 → 壬午 乙巳 乙酉 己卯
+		// 日柱乙酉 → 所在旬 = 甲申旬 → 旬空午未 (written as 所在旬空亡)
+		// 年柱壬午 → 所在旬 = 甲戌旬 → 旬空申酉
+		// 日支酉 ∈ 年柱旬空(申酉) → 日柱.落空亡.年柱旬 true
+		// 年支午 ∈ 日柱旬空(午未) → 年柱.落空亡.日柱旬 true
+		const raw = getBaziChart({
+			year: 2002,
+			month: 5,
+			day: 17,
+			hour: 6,
+			minute: 0,
+			gender: 1,
+		});
+		const e = enrichResult(raw, { year: 2002, month: 5, day: 17 }, "2026-04-19");
+
+		expect(e.八字.旬空).toEqual({
+			日柱旬空: ["午", "未"],
+			年柱旬空: ["申", "酉"],
+		});
+
+		const 年 = e.八字.柱位详细.年柱;
+		const 日 = e.八字.柱位详细.日柱;
+		const 月 = e.八字.柱位详细.月柱;
+		const 时 = e.八字.柱位详细.时柱;
+
+		// 所在旬空亡 = pillar's own xun-voids (reference only, not a judgement)
+		expect(日.所在旬空亡).toEqual(["午", "未"]);
+		expect(年.所在旬空亡).toEqual(["申", "酉"]);
+
+		// 落空亡 = actual void judgement (branch ∈ day-xun / year-xun)
+		expect(日.落空亡).toEqual({ 日柱旬: false, 年柱旬: true });
+		expect(年.落空亡).toEqual({ 日柱旬: true, 年柱旬: false });
+		expect(月.落空亡).toEqual({ 日柱旬: false, 年柱旬: false });
+		expect(时.落空亡).toEqual({ 日柱旬: false, 年柱旬: false });
+
+		// Invariant: 神煞 "空亡" tag ⇔ any(落空亡.*) — upstream uses the union rule.
+		for (const pillar of [年, 月, 日, 时]) {
+			const anyVoid = pillar.落空亡.日柱旬 || pillar.落空亡.年柱旬;
+			expect(pillar.神煞.includes("空亡")).toBe(anyVoid);
+		}
+	});
+
+	test("drops the original 柱.空亡 field in favour of 所在旬空亡 + 落空亡", () => {
+		const raw = getBaziChart({
+			year: 2002,
+			month: 5,
+			day: 17,
+			hour: 6,
+			minute: 0,
+			gender: 1,
+		});
+		const e = enrichResult(raw, { year: 2002, month: 5, day: 17 }, "2026-04-19");
+		for (const k of ["年柱", "月柱", "日柱", "时柱"] as const) {
+			expect((e.八字.柱位详细[k] as Record<string, unknown>).空亡).toBeUndefined();
+			expect((e.八字.柱位详细[k] as Record<string, unknown>).所在旬空亡).toBeDefined();
+			expect((e.八字.柱位详细[k] as Record<string, unknown>).落空亡).toBeDefined();
+		}
+	});
+
 	test("populates 决策辅助 with 日主得令 / 日主根气 / 透藏平衡", () => {
 		// 2002-05-17 06:00 男 → 壬午 乙巳 乙酉 己卯, 日主 乙木,
 		// 巳月 (丙火主气) → 乙生丙 → 我生 → 不得令;時柱卯含乙 = 唯一根.
