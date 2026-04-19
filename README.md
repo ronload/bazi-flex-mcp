@@ -111,6 +111,7 @@ Upstream packed 空亡 into a single per-pillar string (`柱.空亡`) plus a tag
 
 - **`柱位详细.{柱}.所在旬空亡: string[]`** — the two branches void in *that pillar's own* 旬. Reference data only; does **not** mean the pillar itself is falling into 空亡.
 - **`柱位详细.{柱}.落空亡: { 日柱旬: boolean, 年柱旬: boolean }`** — does this pillar's earth branch actually fall into day-xun void / year-xun void. **This is the authoritative "is this pillar in 空亡" signal.**
+- **`大运[].所在旬空亡` / `大运[].落空亡`** — the same two structured fields are applied to every decade-cycle entry, so 大运 and 柱位详细 share a single 空亡 surface. The upstream `大运[].空亡: string` field is removed in favour of these.
 
 Conventions:
 
@@ -118,7 +119,7 @@ Conventions:
 - Traditional schools using year-xun: use `落空亡.年柱旬`.
 - Upstream's `神煞` array still contains a `"空亡"` string for back-compat; it equals the boolean-OR of the two `落空亡` flags.
 
-Upstream's original `柱.空亡` single-string field has been removed from the wrapper output — the structured fields above supersede it.
+Upstream's original `柱.空亡` and `大运[].空亡` single-string fields have been removed from the wrapper output — the structured fields above supersede them.
 
 ### Wuxing score method
 

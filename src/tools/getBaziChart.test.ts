@@ -408,4 +408,30 @@ describe("enrichResult", () => {
 			expect(rel.干支.length).toBe(rel.pillars.length);
 		}
 	});
+
+	test("restructures 大运 空亡 into 所在旬空亡 + 落空亡 (same shape as 柱位详细)", () => {
+		// 2002-05-17 06:00 男 → 日柱乙酉 (旬空午未), 年柱壬午 (旬空申酉).
+		const raw = getBaziChart({
+			year: 2002,
+			month: 5,
+			day: 17,
+			hour: 6,
+			minute: 0,
+			gender: 1,
+		});
+		const e = enrichResult(raw, { year: 2002, month: 5, day: 17 }, "2026-04-19");
+
+		const dayKong = new Set(e.八字.旬空.日柱旬空);
+		const yearKong = new Set(e.八字.旬空.年柱旬空);
+
+		for (const yun of e.八字.大运) {
+			const record = yun as Record<string, unknown>;
+			expect(record.空亡).toBeUndefined();
+			expect(Array.isArray(record.所在旬空亡)).toBe(true);
+			expect(record.落空亡).toBeDefined();
+			expect(yun.落空亡.日柱旬).toBe(dayKong.has(yun.地支));
+			expect(yun.落空亡.年柱旬).toBe(yearKong.has(yun.地支));
+			expect(yun.所在旬空亡).toHaveLength(2);
+		}
+	});
 });

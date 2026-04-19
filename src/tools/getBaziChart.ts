@@ -561,22 +561,25 @@ export function enrichResult(
 			流年: liunian,
 			流年范围: effectiveLiunianRange,
 			决策辅助: decisionAids,
-			大运: bazi.大运.map((yun) => ({
-				...yun,
-				日主关系: yun.日主关系 === "" ? null : yun.日主关系,
-				当前: refYear >= yun.起始年份 && refYear <= yun.结束年份,
-				起始虚岁: yun.起始年龄,
-				起始实岁: startMd
-					? actualAgeAt(
-							birth.year,
-							birth.month,
-							birth.day,
-							yun.起始年份,
-							startMd.month,
-							startMd.day,
-						)
-					: yun.起始年龄 - 1,
-			})),
+			大运: bazi.大运.map((yun) => {
+				const remapped = remapPillarKongWang(yun, dayKongSet, yearKongSet);
+				return {
+					...remapped,
+					日主关系: remapped.日主关系 === "" ? null : remapped.日主关系,
+					当前: refYear >= remapped.起始年份 && refYear <= remapped.结束年份,
+					起始虚岁: remapped.起始年龄,
+					起始实岁: startMd
+						? actualAgeAt(
+								birth.year,
+								birth.month,
+								birth.day,
+								remapped.起始年份,
+								startMd.month,
+								startMd.day,
+							)
+						: remapped.起始年龄 - 1,
+				};
+			}),
 		},
 	};
 }
@@ -632,7 +635,7 @@ export function registerGetBaziChart(server: McpServer): void {
 				"- `八字.大运[].当前` is computed from `meta.referenceDateUsed` (defaults to today). Override via the `referenceDate` input for historical or hypothetical scenarios.",
 				"- `meta.scoringMethod` documents how `八字.五行分值` is computed, so consumers do not need to guess the weighting scheme.",
 				"- Time strings (`输入.公历`, `真太阳时.钟表时间`, `真太阳时.真太阳时`, `八字.公历`) are all ISO 8601 with second precision (`YYYY-MM-DDTHH:MM:SS`). `真太阳时.修正分钟` is the original decimal-minute correction; `真太阳时.修正秒数` is the same value as a rounded integer number of seconds.",
-				"- 空亡 is surfaced as three complementary fields (this server restructures upstream's ambiguous single-string surface). `八字.旬空 = { 日柱旬空: [...], 年柱旬空: [...] }` is the top-level index of void branches for the two traditional reference 旬s. Each pillar exposes `所在旬空亡: string[]` (the two branches void in *that pillar's own* 旬 — pure reference, does NOT imply this pillar is void) and `落空亡: { 日柱旬: boolean, 年柱旬: boolean }` (does this pillar's earth branch actually fall into day-xun / year-xun void). Prefer `落空亡` as the authoritative \"is this pillar in 空亡\" signal; upstream's `神煞` array still contains a `\"空亡\"` string for compatibility but it's the boolean-OR of `落空亡.日柱旬` and `落空亡.年柱旬`. For strict modern 以日起空亡 convention, use `落空亡.日柱旬` alone.",
+				"- 空亡 is surfaced as three complementary fields (this server restructures upstream's ambiguous single-string surface). `八字.旬空 = { 日柱旬空: [...], 年柱旬空: [...] }` is the top-level index of void branches for the two traditional reference 旬s. Each pillar (and each `大运` entry) exposes `所在旬空亡: string[]` (the two branches void in *that pillar's own* 旬 — pure reference, does NOT imply this pillar is void) and `落空亡: { 日柱旬: boolean, 年柱旬: boolean }` (does this pillar's earth branch actually fall into day-xun / year-xun void). The original upstream `空亡: string` field is removed on both 柱位详细 and 大运 entries — use the structured fields instead. Prefer `落空亡` as the authoritative \"is this pillar in 空亡\" signal; upstream's `神煞` array still contains a `\"空亡\"` string for compatibility but it's the boolean-OR of `落空亡.日柱旬` and `落空亡.年柱旬`. For strict modern 以日起空亡 convention, use `落空亡.日柱旬` alone.",
 				'- `八字.起运` is the precise duration from birth to the first decade cycle (e.g., `"6年7月22日起运"`), derived from the solar-term distance. `八字.起运日期` is the corresponding Gregorian date.',
 				"- Each `八字.大运` entry exposes `起始虚岁` (East-Asian nominal age; equals the original `起始年龄`) and `起始实岁` (completed years at that decade-cycle start, derived from `起运日期` aligned to the birth month/day). They typically differ by 1-2.",
 			].join("\n"),
