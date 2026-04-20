@@ -1,5 +1,12 @@
 # bazi-flex-mcp
 
+[![CI](https://github.com/ronload/bazi-flex-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/ronload/bazi-flex-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Bun](https://img.shields.io/badge/Bun-%E2%89%A51.1.0-000?logo=bun&logoColor=white)](https://bun.sh)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Biome](https://img.shields.io/badge/Biome-60a5fa?logo=biome&logoColor=white)](https://biomejs.dev)
+[![MCP](https://img.shields.io/badge/MCP-1.0-5b5bd6)](https://modelcontextprotocol.io)
+
 A Bazi (八字 / Four Pillars) MCP server that works even when the birth hour is unknown.
 
 Most real-world users don't know the exact hour they were born. Existing Bazi MCP servers require a complete birth timestamp (year / month / day / hour) and refuse to produce anything useful otherwise. `bazi-flex-mcp` is aiming to be the first open-source Bazi MCP server that handles the partial-time case directly, so an AI assistant can still reason about the chart when the user only knows the date.
