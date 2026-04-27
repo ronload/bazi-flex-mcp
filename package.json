@@ -51,7 +51,7 @@
   "dependencies": {
     "@hono/mcp": "^0.2.5",
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "hono": "^4.12.14",
+    "hono": "^4.12.15",
     "shunshi-bazi-core": "^0.1.0",
     "zod": "^4.0.0"
   },
@@ -59,10 +59,10 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.12",
+    "@biomejs/biome": "^2.4.13",
     "@types/bun": "latest",
     "typescript": "^6.0.0",
-    "wrangler": "^4.0.0"
+    "wrangler": "^4.85.0"
   },
   "engines": {
     "bun": ">=1.1.0"
