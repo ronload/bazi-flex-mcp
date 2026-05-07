@@ -62,7 +62,7 @@
     "@biomejs/biome": "^2.4.14",
     "@types/bun": "latest",
     "typescript": "^6.0.0",
-    "wrangler": "^4.88.0"
+    "wrangler": "~4.85.0"
   },
   "engines": {
     "bun": ">=1.1.0"

@@ -20,6 +20,14 @@ updates:
         update-types:
           - "version-update:semver-minor"
           - "version-update:semver-major"
+      # wrangler >= 4.86.0 bundles a miniflare that calls zod 3-only API
+      # (z.ostring) at module load. With zod pinned to 4.3.x for the MCP SDK,
+      # this crashes `wrangler deploy`. Re-evaluate when cloudflare/workers-sdk
+      # ships a miniflare that either declares its zod dep or uses zod 4-safe API.
+      - dependency-name: "wrangler"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-major"
 
   - package-ecosystem: "github-actions"
     directory: "/"
