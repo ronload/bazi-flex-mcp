@@ -10,6 +10,16 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # zod >= 4.4 changes internal type structure ($ZodNumberInternals etc.)
+      # which breaks @modelcontextprotocol/sdk's ZodRawShapeCompat type check.
+      # Tracked upstream in modelcontextprotocol/typescript-sdk#555 / #925; the
+      # structural fix lands in SDK 2.0 (currently alpha). Until 2.0 stable,
+      # stay on the 4.3 patch line.
+      - dependency-name: "zod"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-major"
 
   - package-ecosystem: "github-actions"
     directory: "/"
