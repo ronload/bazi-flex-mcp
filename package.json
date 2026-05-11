@@ -59,7 +59,7 @@
     "zod": "~4.3.6"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.14",
+    "@biomejs/biome": "^2.4.15",
     "@types/bun": "latest",
     "typescript": "^6.0.0",
     "wrangler": "~4.85.0"
