@@ -49,9 +49,9 @@
     "check:ci": "biome ci ./src"
   },
   "dependencies": {
-    "@hono/mcp": "^0.2.5",
+    "@hono/mcp": "^0.3.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "hono": "^4.12.18",
+    "hono": "^4.12.19",
     "shunshi-bazi-core": "^0.1.0",
     "zod": "^4.0.0"
   },
