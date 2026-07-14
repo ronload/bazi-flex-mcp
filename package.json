@@ -61,7 +61,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.3",
     "@types/bun": "latest",
-    "typescript": "^6.0.0",
+    "typescript": "^7.0.2",
     "wrangler": "~4.85.0"
   },
   "engines": {
