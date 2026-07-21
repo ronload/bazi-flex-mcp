@@ -1,22 +1,13 @@
 /**
- * Deterministic PRNG for corpus generation.
- *
- * The corpus MUST be reproducible byte-for-byte on every machine and every run,
- * otherwise a fingerprint baseline is meaningless. `Math.random()` is therefore
- * banned everywhere under test/oracle/.
- *
- * mulberry32: 32-bit state, no dependencies, uniform enough for sampling a
- * parameter space. It is not cryptographic and does not need to be.
+ * The corpus must be reproducible byte for byte on every machine, otherwise a
+ * fingerprint baseline means nothing. `Math.random()` is banned under test/oracle/.
  */
 
 export interface Rng {
-	/** Uniform in [0, 1). */
 	next(): number;
-	/** Uniform integer in [min, max] inclusive. */
+	/** Inclusive at both ends. */
 	int(min: number, max: number): number;
-	/** Uniform element of a non-empty array. */
 	pick<T>(items: readonly T[]): T;
-	/** True with the given probability. */
 	chance(p: number): boolean;
 }
 

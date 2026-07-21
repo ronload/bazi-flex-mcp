@@ -1,18 +1,15 @@
 #!/usr/bin/env bun
 /**
- * Oracle CLI.
+ *   bun run test/oracle/cli.ts baseline              regenerate every manifest
+ *   bun run test/oracle/cli.ts check                 compare against the manifests
+ *   bun run test/oracle/cli.ts coverage              what the corpus reaches
+ *   bun run test/oracle/cli.ts explain <caseId>      the inputs behind one case
+ *   bun run test/oracle/cli.ts dump <caseId> <dir>   canonical payloads for one case
+ *   bun run test/oracle/cli.ts diff <fileA> <fileB>  field-level diff of two dumps
  *
- *   bun run test/oracle/cli.ts baseline           regenerate every manifest
- *   bun run test/oracle/cli.ts check              compare against the manifests
- *   bun run test/oracle/cli.ts coverage           what the corpus actually reaches
- *   bun run test/oracle/cli.ts explain <caseId>   the inputs behind one case
- *   bun run test/oracle/cli.ts dump <caseId> <dir> canonical payloads for one case
- *   bun run test/oracle/cli.ts diff <fileA> <fileB>   field-level diff of two dumps
- *
- * The dump/diff pair is how a real investigation runs: dump before a change,
- * dump after, diff. `check` tells you WHICH cases moved; dump/diff tells you
- * WHAT moved inside them. A fingerprint alone deliberately cannot answer the
- * second question, which is the price of not storing megabytes of payloads.
+ * `check` says which cases moved; dump before, dump after and diff says what
+ * moved inside them. That split is the price of storing fingerprints instead of
+ * megabytes of payloads.
  */
 
 import { mkdir } from "node:fs/promises";
@@ -128,7 +125,7 @@ async function cmdDump(id: string, dir: string): Promise<number> {
 				payload = { __throw: err instanceof Error ? err.message : String(err) };
 			}
 			const path = join(dir, `${id.replace(/[/\\]/g, "_")}.${surface.name}.json`);
-			// Pretty-printed from the canonical form: stable key order AND readable.
+			// Pretty-printed from the canonical form, so key order is stable across dumps.
 			await Bun.write(path, `${JSON.stringify(JSON.parse(canonicalize(payload)), null, "\t")}\n`);
 			console.log(path);
 		}

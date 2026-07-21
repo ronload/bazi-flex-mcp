@@ -1,11 +1,6 @@
 /**
- * The parity contract.
- *
- * This is the safety net the whole refactor rests on: it asserts that the
- * current code produces, for every corpus case, exactly the output that was
- * baselined. A failure here is never "the test is wrong" — it is a behaviour
- * change, and it must be either reverted or re-baselined deliberately with the
- * reason recorded in the commit.
+ * A failure here is never a wrong test. It is a behaviour change, to be reverted
+ * or re-baselined deliberately with the reason recorded in the commit.
  *
  * Re-baseline with: bun run test/oracle/cli.ts baseline
  */

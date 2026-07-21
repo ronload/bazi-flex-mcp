@@ -1,12 +1,8 @@
 /**
- * Corpus coverage report.
- *
- * A fingerprint baseline only protects what the corpus actually reaches. The
- * single most useful number here is the set of distinct 神煞 names the corpus
- * triggers: several of the upstream tables fire on three of the sixty day
- * pillars, so "2000 random samples" says nothing about whether they are covered.
- * Coverage is measured from real outputs, not from inputs, because reaching a
- * table entry is a property of the result, not of the request.
+ * A fingerprint baseline only protects what the corpus reaches. Coverage is
+ * measured from outputs rather than inputs because reaching a 神煞 table entry is
+ * a property of the result: several tables fire on three of the sixty day pillars,
+ * so a count of random samples says nothing about whether they are covered.
  */
 
 import { getBaziChart } from "shunshi-bazi-core";
@@ -27,11 +23,8 @@ export interface Coverage {
 	trueSolarTimeCases: number;
 }
 
+/** Upstream relation strings look like "午子相冲"; only the trailing kind is of interest here. */
 const relationKind = (s: string): string => {
-	// Upstream relation strings look like "午子相冲" or "子丑暗合"; the kind is the
-	// trailing token, which is what the coverage question is actually about.
-	// `暗合` is upstream's (wrong) label for 地支六合 in short mode; it is listed here
-	// as an observed output, not as an endorsement. See 明確不做的事 in the plan.
 	const m = /(相合|相冲|相害|相破|相刑|暗合|自刑|三刑|克)/.exec(s);
 	return m?.[1] ?? s;
 };
@@ -64,8 +57,8 @@ export function computeCoverage(corpus: readonly OracleCase[] = buildCorpus()): 
 		yearPillars.add(p.年柱.干支);
 		monthBranches.add(p.月柱.地支);
 		hourBranches.add(p.时柱.地支);
-		// 纳音 is a two-or-three character name whose LAST character is the element,
-		// which is what 童子煞 and several other tables key on.
+		// The element is the last character of the 纳音 name, which is what 童子煞 and
+		// several other tables key on.
 		nayinElements.add(p.年柱.纳音.slice(-1));
 		for (const key of ["年柱", "月柱", "日柱", "时柱"] as const) {
 			for (const s of p[key].神煞) shensha.add(s);

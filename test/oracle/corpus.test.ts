@@ -30,7 +30,6 @@ describe("prng", () => {
 
 describe("corpus determinism", () => {
 	test("two independent builds are byte-identical", () => {
-		// The entire baseline is meaningless if the corpus is not reproducible.
 		expect(canonicalize(buildCorpusUncached())).toBe(canonicalize(buildCorpusUncached()));
 	});
 
@@ -42,8 +41,8 @@ describe("corpus determinism", () => {
 	});
 
 	test("every case carries an explicit referenceDate", () => {
-		// A case without one would fall back to the real clock, which would make
-		// the tool-surface fingerprints rot at midnight.
+		// A case without one falls back to the real clock, rotting the tool-surface
+		// fingerprints at midnight.
 		for (const c of buildCorpus()) expect(c.referenceDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 	});
 });
@@ -69,8 +68,6 @@ describe("corpus layers", () => {
 	});
 
 	test("the 立春 layer probes plus/minus one minute around the instant", () => {
-		// The +/-1 minute pair is the whole point of the layer: it is the only place
-		// a one-minute input change must flip the 年柱.
 		const ids = corpus.filter((c) => c.layer === "lichun").map((c) => c.id);
 		expect(ids).toContain("lichun/2026+0001");
 		expect(ids).toContain("lichun/2026-0001");
@@ -98,8 +95,8 @@ describe("corpus layers", () => {
 	});
 
 	test("reference dates straddle 立春", () => {
-		// Without pre-立春 reference dates the corpus would have zero coverage of the
-		// exact window `time/sexagenaryYear.ts` exists to get right.
+		// Without pre-立春 reference dates the corpus has zero coverage of the window
+		// `time/sexagenaryYear.ts` exists to get right.
 		const refs = new Set(buildCorpus().map((c) => c.referenceDate));
 		expect(refs).toContain("2026-01-20");
 		expect(refs).toContain("2026-02-03");
@@ -130,10 +127,9 @@ describe("corpus coverage", () => {
 	});
 
 	test("every 神煞 upstream can emit is triggered", () => {
-		// Verified against the full set of 神煞 string literals in
-		// shunshi-bazi-core@0.2.0 dist/lib/shensha.js at baseline time. If upstream
-		// (or the vendored copy) adds a 神煞, this list must grow with it, otherwise
-		// the new table entry ships with no coverage at all.
+		// Taken from the 神煞 string literals in shunshi-bazi-core@0.2.0
+		// dist/lib/shensha.js. If upstream adds one, this list must grow with it or
+		// the new table entry ships with no coverage.
 		const expected = [
 			"丧门",
 			"九丑日",
@@ -190,12 +186,10 @@ describe("corpus coverage", () => {
 	});
 
 	test("all 天干 relation kinds and every 地支 relation kind are triggered", () => {
-		// 天干 have only 合/冲/克 — there is no 天干 刑/害/破 — so 3 is complete.
-		// Ordering is UTF-16 code-unit order, which is not stroke or pinyin order.
+		// 天干 have only 合/冲/克, so three is complete. Order is UTF-16 code units.
 		expect(cov.ganRelations).toEqual(["克", "相冲", "相合"]);
-		// `暗合` here is upstream's short-mode label for 地支六合, not true 暗合.
-		// Registered as an observed output, not endorsed: correcting the term is a
-		// planned deliberate divergence in a later stage.
+		// `暗合` is upstream's short-mode label for 地支六合. Recorded as an observed
+		// output, not endorsed; correcting the term is a later deliberate divergence.
 		expect(cov.zhiRelations).toEqual(["暗合", "相冲", "相刑", "相害", "相破"]);
 	});
 });
@@ -208,9 +202,8 @@ describe("clock freeze", () => {
 	});
 
 	test("fingerprints do not move when the real clock does", () => {
-		// 大运[].当前 is computed from `new Date().getFullYear()` inside upstream with
-		// no injection point, so without the freeze this baseline would silently rot
-		// every January 1st and produce split results across a midnight run.
+		// Upstream computes 大运[].当前 from `new Date().getFullYear()` with no
+		// injection point, so without the freeze the baseline rots every January 1.
 		const sample = buildCorpus()
 			.filter((c) => c.layer === "daypillar")
 			.slice(0, 12);

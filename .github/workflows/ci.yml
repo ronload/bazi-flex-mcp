@@ -18,9 +18,7 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # --frozen-lockfile only asserts the lockfile is not modified by the install.
-      # This catches the case where it is, which means package.json and bun.lock
-      # disagree. The installed-artefact check lives in test/oracle/versions.test.ts.
+      # A modified lockfile means package.json and bun.lock disagree.
       - name: Assert lockfile is clean after install
         run: git diff --exit-code bun.lock
 
@@ -33,9 +31,7 @@ jobs:
       - name: Test
         run: bun test
 
-      # Redundant with the parity tests inside `bun test`, and deliberately so:
-      # this step names the oracle in the CI log and prints the per-case
-      # "expected -> actual" list plus the explain/dump commands to investigate
-      # with, which an assertion failure cannot.
+      # Redundant with the parity tests on purpose: this prints the per-case
+      # expected/actual list and the commands to investigate with.
       - name: Oracle parity
         run: bun run oracle:check

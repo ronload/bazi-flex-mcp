@@ -1,88 +1,101 @@
 # Oracle
 
-「Oracle」是測試術語（test oracle），指判定一次執行結果是對是錯的判準來源。這裡的判準是
-**目前這版程式的實際行為**，以 `shunshi-bazi-core@0.2.0` + `tyme4ts@1.4.6` 為底。與 Oracle
-Corporation 無關，全程離線，不存取任何網路服務。
+"Oracle" is the testing term (test oracle): the source of truth a run is judged
+against. Here that source is the current code's actual behaviour on top of
+`shunshi-bazi-core@0.2.0` and `tyme4ts@1.4.6`. Nothing to do with Oracle
+Corporation; it is fully offline and touches no network service.
 
-它存在的理由：接下來要把 core 搬進本 repo 自己維護、再改輸出形狀。「有沒有改壞」不能靠
-人工抽看幾張盤回答，必須有一個能對數千組輸入回答「逐位元相同 / 這 41 組變了」的東西。
+It exists because the next stages vendor core into this repo and then reshape the
+output. "Did that break anything" cannot be answered by eyeballing a few charts.
+It needs something that answers "byte-identical" or "these 41 cases moved" across
+thousands of inputs.
 
-## 用法
+## Usage
 
 ```
-bun run oracle:check      # 對照基線，CI 跑的就是這個（也涵蓋在 bun test 內）
-bun run oracle:baseline   # 重建基線。這是刻意的動作，見下方
-bun run oracle:coverage   # 語料實際觸及了什麼
+bun run oracle:check      # compare against the baseline; CI runs this, and bun test covers it too
+bun run oracle:baseline   # rebuild the baseline, a deliberate act, see below
+bun run oracle:coverage   # what the corpus reaches
 
-bun run test/oracle/cli.ts explain lichun/2026+0001      # 某個案例的輸入是什麼
-bun run test/oracle/cli.ts dump  lichun/2026+0001 /tmp/a # 完整 payload 落檔
-bun run test/oracle/cli.ts diff  /tmp/a/x.json /tmp/b/x.json  # 欄位級 diff
+bun run test/oracle/cli.ts explain lichun/2026+0001      # the inputs behind one case
+bun run test/oracle/cli.ts dump  lichun/2026+0001 /tmp/a # full payloads to disk
+bun run test/oracle/cli.ts diff  /tmp/a/x.json /tmp/b/x.json  # field-level diff
 ```
 
-典型的調查流程是：`check` 告訴你**哪些**案例動了，`dump` 前後各一次再 `diff` 告訴你案例
-**裡面什麼**動了。指紋刻意無法回答第二個問題，這是不把數十 MB 產生物塞進版控的代價。
+A typical investigation: `check` says which cases moved, then `dump` before and
+after plus `diff` says what moved inside them. A fingerprint deliberately cannot
+answer the second question, which is the price of keeping tens of megabytes of
+generated payloads out of version control.
 
-## 組成
+## Layout
 
-| 檔案 | 職責 |
+| File | Responsibility |
 | --- | --- |
-| `corpus.ts` | 語料：六個 layer，決定性產生，`CORPUS_VERSION` 控管 |
-| `cities.ts` | 上游城市表的凍結快照（不深入 import 上游私有路徑） |
-| `prng.ts` | mulberry32。此目錄禁用 `Math.random()` |
-| `surfaces.ts` | 三個受測面 + 時鐘凍結 |
-| `canonical.ts` | 正規化序列化、指紋、深層 diff |
-| `manifest.ts` | 基線檔讀寫與比對 |
-| `coverage.ts` | 語料覆蓋度（從**輸出**量測，不是從輸入） |
-| `versions.test.ts` | 實裝版本守衛，見該檔頭註解 |
+| `corpus.ts` | The corpus: six layers, deterministic, gated by `CORPUS_VERSION` |
+| `cities.ts` | Frozen snapshot of the upstream city tables |
+| `prng.ts` | mulberry32. `Math.random()` is banned in this directory |
+| `surfaces.ts` | The three surfaces plus the clock freeze |
+| `canonical.ts` | Canonical serialisation, fingerprints, deep diff |
+| `manifest.ts` | Baseline file I/O and comparison |
+| `coverage.ts` | Corpus coverage, measured from outputs rather than inputs |
+| `versions.test.ts` | Installed-version guard |
 
-## 三個受測面
+## The three surfaces
 
-- **`core`** — 上游 `getBaziChart()`，含 schema 未曝露的 `sect` / `useTrueSolarTime` /
-  `standardMeridian`。這是 Stage 1（vendor 進 repo）第一天就必須逐位元滿足的契約。
-- **`toolFull`** — `getBaziChart` MCP 工具的完整輸出。
-- **`toolPartial`** — `getBaziChartPartial` 的輸出。
+- **`core`**: upstream `getBaziChart()`, including `sect` / `useTrueSolarTime` /
+  `standardMeridian` which the MCP schema does not expose. This is the contract
+  vendoring must satisfy byte for byte on day one.
+- **`toolFull`**: the full `getBaziChart` MCP payload.
+- **`toolPartial`**: the `getBaziChartPartial` payload.
 
-後兩者**預期**會在 Stage 2/3 刻意分岔。分岔時必須是一次經過審閱的基線變更，不是意外。
+The latter two are expected to diverge in later stages. When they do it must be a
+reviewed baseline change, not a surprise.
 
-## 語料 layer 各自守什麼
+## What each corpus layer guards
 
-| layer | 案例數 | 守的東西 |
+| Layer | Cases | Guards |
 | --- | --- | --- |
-| `random` | 2000 | 廣面回歸，1900-2100 全跨度 |
-| `daypillar` | 60 | 連續 60 天 = 完整一輪甲子，因此涵蓋全部 10 組稀疏神煞日柱集合與旬空整輪 |
-| `midnight` | 296 | 早晚子（`sect` 1/2）、時辰跨子時、真太陽時修正跨午夜 |
-| `lichun` | 1407 | 每年立春前後 ±48h，含 ±1 分鐘那組——唯一「差一分鐘必須翻年柱」的地方 |
-| `jieqi` | 1044 | 12 個節的月柱換界 |
-| `city` | 152 | 每個城市鍵與別名各一，含 5 個標準經線覆寫城市 |
+| `random` | 2000 | Broad regression across the full 1900-2100 span |
+| `daypillar` | 60 | 60 consecutive days is one full 甲子, covering all 10 sparse 神煞 day-pillar sets and the whole 旬空 rotation |
+| `midnight` | 296 | 早晚子 (`sect` 1/2), 时辰 rolling over 子时, 真太阳时 correction crossing midnight |
+| `lichun` | 1407 | 立春 plus/minus 48h every year, including the plus/minus 1 minute pair, the only place a one-minute change must flip the 年柱 |
+| `jieqi` | 1044 | The 月柱 boundary at each of the 12 節 |
+| `city` | 152 | Every city key and alias, including the 5 standard-meridian overrides |
 
-`daypillar` 與 `city` 是**窮舉**而非抽樣，因為這兩處的空間夠小而觸發夠稀疏：某些神煞只在
-60 個日柱中的 3 個上觸發，隨機抽樣在 200 年跨度上幾乎照不到。
+`daypillar` and `city` are exhaustive rather than sampled, because their spaces
+are small and their triggers are sparse: some 神煞 fire on 3 of the 60 day
+pillars, which random sampling over a 200-year span would almost never reach.
 
-目前實測覆蓋：60/60 日柱、60/60 年柱、12/12 月支、12/12 時支、5/5 納音五行、兩種 sect、
-151 個城市字串，以及上游 `shensha.js` 內**全部** 50 個神煞名稱。
+Measured coverage: 60/60 日柱, 60/60 年柱, 12/12 月支, 12/12 时支, 5/5 纳音五行,
+both sects, 151 city strings, and all 50 神煞 names in upstream `shensha.js`.
 
-## 什麼時候可以重建基線
+## When the baseline may be rebuilt
 
-只有兩種情況：
+Two cases only:
 
-1. **語料變了**（改了 `corpus.ts` 或 `cities.ts`）。同時要提高 `CORPUS_VERSION`。
-2. **行為刻意變了**，且變更本身已經被審閱過。
+1. **The corpus changed** (`corpus.ts` or `cities.ts`). Bump `CORPUS_VERSION` too.
+2. **Behaviour changed on purpose**, and that change has already been reviewed.
 
-重建基線與行為變更**必須分開 commit**。混在一起的話 `git diff` 上那幾千行指紋就完全讀不出
-是哪個改動造成的，基線也就等於沒有。
+Rebuild and behaviour change must be separate commits. Mixed together, the few
+thousand fingerprint lines in `git diff` no longer show which change caused what,
+and the baseline stops being worth anything.
 
-## 時鐘凍結
+## Clock freeze
 
-上游 `buildDayun` 用 `new Date().getFullYear()` 算 `大运[].当前`，沒有注入點。所以整套
-harness 在 `2026-06-15T12:00:00Z` 凍結系統時鐘。沒有這個凍結，基線每逢元旦會無聲腐爛，
-而跨午夜執行的一次 run 會對同一組輸入給出兩種答案。
+Upstream `buildDayun` computes `大运[].当前` from `new Date().getFullYear()` with
+no injection point, so the harness freezes the system clock at
+`2026-06-15T12:00:00Z`. Without it the baseline rots silently every January 1,
+and a run straddling midnight gives two answers for one input.
 
-選正午 UTC 是為了讓 UTC-11 到 UTC+11 的本地日曆日期一致，UTC+8 以外的開發者也能重現。
+Noon UTC keeps the local calendar date identical from UTC-11 to UTC+11, so
+developers outside UTC+8 reproduce the same results.
 
-## Oracle 的天花板
+## What the oracle cannot do
 
-**全量比對只能證明與上游的私家家法一致，永遠不能證明命理上正確。** 這是無法用測試消解的。
+Full-corpus parity proves agreement with upstream's conventions. It can never
+prove correctness as 命理. No test resolves that.
 
-更要緊的是：本重構的主要賣點（原生三柱、三合三會三刑、帶柱位標籤的 relations、決策輔助、
-流年立春界點）恰恰全是 oracle 沒有參照物的**新行為**。那些需要典籍例證測例與等價性測試，
-不能靠這裡。
+More to the point, the main value of this refactor (native three-pillar charts,
+三合/三会/三刑, pillar-labelled relations, decision aids, the 立春 year boundary)
+is exactly the new behaviour the oracle has no reference for. That needs
+worked examples from the literature and equivalence tests, not this.

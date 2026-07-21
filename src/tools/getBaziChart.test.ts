@@ -10,7 +10,6 @@ import {
 } from "./getBaziChart.js";
 import { resolveChartRequest } from "./shared/request.js";
 
-/** Test shorthand for the resolved time-dependent inputs of a chart request. */
 const req = (referenceDate: string, range?: { start: number; end: number }) =>
 	resolveChartRequest({
 		referenceDate,
@@ -214,7 +213,7 @@ describe("enrichResult", () => {
 		expect(current?.藏干十神).toEqual(["食神", "偏财"]);
 	});
 
-	test("流年 当前 以立春為年界,不是元旦", () => {
+	test("流年 当前 turns over at 立春, not on Jan 1", () => {
 		const raw = getBaziChart({
 			year: 2002,
 			month: 5,
@@ -226,7 +225,7 @@ describe("enrichResult", () => {
 		const birth2002 = { year: 2002, month: 5, day: 17 };
 		const range = { start: 2024, end: 2028 };
 
-		// 立春 2026 落在 02-04。之前仍屬 2025 乙巳。
+		// 立春 2026 falls on Feb 4.
 		for (const d of ["2026-01-15", "2026-02-03"]) {
 			const e = enrichResult(raw, birth2002, req(d, range));
 			const cur = e.八字.流年.find((x) => x.当前);
@@ -234,7 +233,6 @@ describe("enrichResult", () => {
 			expect(cur?.干支, `referenceDate ${d}`).toBe("乙巳");
 		}
 
-		// 立春當日起換 2026 丙午
 		for (const d of ["2026-02-04", "2026-07-21"]) {
 			const e = enrichResult(raw, birth2002, req(d, range));
 			const cur = e.八字.流年.find((x) => x.当前);
@@ -243,8 +241,9 @@ describe("enrichResult", () => {
 		}
 	});
 
-	test("当前 的干支年落在明確視窗外時,沒有任何一年是 当前", () => {
-		// 這是修正引入的新情形,刻意保留而不做夾取:參照時刻確實不在請求的視窗內。
+	test("no year is 当前 when the 干支年 falls outside an explicit window", () => {
+		// Left unclamped on purpose: the reference instant genuinely is not in the
+		// window the caller asked for.
 		const raw = getBaziChart({ year: 2002, month: 5, day: 17, hour: 6, minute: 0, gender: 1 });
 		const e = enrichResult(
 			raw,
@@ -254,7 +253,7 @@ describe("enrichResult", () => {
 		expect(e.八字.流年.some((x) => x.当前)).toBe(false);
 	});
 
-	test("預設 流年 視窗在立春前以干支年為心", () => {
+	test("the default window centres on the 干支年 before 立春", () => {
 		const raw = getBaziChart({ year: 2002, month: 5, day: 17, hour: 6, minute: 0, gender: 1 });
 		const e = enrichResult(raw, { year: 2002, month: 5, day: 17 }, req("2026-01-15"));
 		expect(e.八字.流年范围).toEqual({ start: 2022, end: 2028 });

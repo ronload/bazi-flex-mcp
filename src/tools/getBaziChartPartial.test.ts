@@ -4,7 +4,6 @@ import { computeTenGodStats } from "./getBaziChart/index.js";
 import { enrichPartialResult } from "./getBaziChartPartial/index.js";
 import { resolveChartRequest } from "./shared/request.js";
 
-/** Test shorthand for the resolved time-dependent inputs of a chart request. */
 const req = (referenceDate: string, range?: { start: number; end: number }) =>
 	resolveChartRequest({
 		referenceDate,
@@ -151,9 +150,9 @@ describe("enrichPartialResult", () => {
 		expect(enriched.八字.流年.map((e) => e.干支)).toEqual(["甲辰", "乙巳", "丙午", "丁未", "戊申"]);
 	});
 
-	test("流年 当前 以立春為年界 (與 full 模式同一條路徑)", () => {
-		// 兩份 enrich 曾經是逐字重複的複本;參照解析抽出後不可能再漂移,
-		// 這條測試就是釘住那個保證。
+	test("流年 当前 turns over at 立春, on the same path as full mode", () => {
+		// The two enrich modules used to carry verbatim copies of the defaulting
+		// block. This pins the guarantee that they cannot drift apart again.
 		const raw = getBaziChart({ year: 2002, month: 5, day: 17, hour: 12, minute: 0, gender: 1 });
 		const birth2002 = { year: 2002, month: 5, day: 17 };
 		const range = { start: 2024, end: 2028 };

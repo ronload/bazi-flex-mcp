@@ -1,38 +1,24 @@
 /**
- * Canonical serialisation, fingerprinting, and deep diff.
- *
- * Why fingerprints instead of stored payloads: one full chart is ~8KB of JSON.
- * The corpus is thousands of cases across three surfaces, so storing payloads
- * would put tens of megabytes of generated JSON under version control and make
- * every re-baseline an unreviewable diff. A 64-bit fingerprint per case gives
- * the same detection power (any byte change flips it) at ~30 bytes per case,
- * and `git diff` on the manifest then names exactly which cases moved.
- *
- * The cost is that a fingerprint alone cannot say WHAT changed. That is what
- * `diffValues` is for: once the manifest names the case, the CLI re-runs that
- * one case against both implementations and prints a field-level diff.
+ * Fingerprints rather than stored payloads: one chart is ~8KB of JSON and the
+ * corpus is thousands of cases across three surfaces, which would put tens of
+ * megabytes of generated JSON under version control and make every re-baseline
+ * unreviewable. `diffValues` covers what a fingerprint cannot say, which is what
+ * actually changed inside a case the manifest has already named.
  */
 
 /**
- * Deterministic JSON with recursively sorted object keys.
+ * Object keys are sorted because key order is an artefact of construction order,
+ * not of meaning. Array order is preserved and load-bearing: 神煞 arrays are
+ * order-sensitive by the parity contract, so a reordering there is a real diff.
  *
- * Keys are sorted because object key order is an artefact of construction order,
- * not of meaning: a rewrite that assembles the same chart in a different order
- * is not a behaviour change and must not be reported as one.
- *
- * Array order is preserved. This is deliberate and load-bearing: 神煞 arrays are
- * order-sensitive by the parity contract (the upstream port fixed a specific
- * emission order), so a reordering there IS a diff.
- *
- * `undefined` object values are dropped, matching `JSON.stringify`, so that an
- * explicitly-undefined key and an absent key fingerprint identically. A key
- * present with value `null` is distinct from both.
+ * `undefined` values are dropped to match `JSON.stringify`, so an explicitly
+ * undefined key and an absent key fingerprint alike. `null` is distinct from both.
  */
 export function canonicalize(value: unknown): string {
 	if (value === null) return "null";
 	if (typeof value === "number") {
-		// -0 and 0 must not be distinguishable; NaN/Infinity are not valid JSON and
-		// would silently become null, so surface them instead of hiding them.
+		// JSON.stringify would turn these into null, making a genuine arithmetic
+		// bug indistinguishable from a legitimate null.
 		if (!Number.isFinite(value)) throw new Error(`non-finite number in payload: ${value}`);
 		return JSON.stringify(value === 0 ? 0 : value);
 	}
@@ -47,19 +33,13 @@ export function canonicalize(value: unknown): string {
 	throw new Error(`unserialisable value of type ${typeof value} in payload`);
 }
 
-/**
- * 16 hex chars of SHA-256 over the canonical form.
- *
- * 64 bits against a corpus of order 10^4 gives a collision probability around
- * 10^-11, which is far below the probability of any other part of this harness
- * being wrong. Truncation is purely to keep the manifest readable.
- */
+/** Truncated to 16 hex chars purely to keep the manifest readable; 64 bits is ample for 10^4 cases. */
 export function fingerprint(value: unknown): string {
 	return new Bun.CryptoHasher("sha256").update(canonicalize(value)).digest("hex").slice(0, 16);
 }
 
 export interface Difference {
-	/** JSON-pointer-ish path, e.g. `八字.柱位详细.年柱.神煞[2]`. */
+	/** For example `八字.柱位详细.年柱.神煞[2]`. */
 	path: string;
 	expected: unknown;
 	actual: unknown;
@@ -119,7 +99,6 @@ function walk(path: string, expected: unknown, actual: unknown, out: Difference[
 	}
 }
 
-/** Field-level differences between two payloads. Empty means byte-identical after canonicalisation. */
 export function diffValues(expected: unknown, actual: unknown): Difference[] {
 	const out: Difference[] = [];
 	walk("", expected, actual, out);

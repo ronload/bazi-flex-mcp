@@ -1,10 +1,7 @@
 /**
- * Manifest I/O.
- *
- * One plain-text file per surface, `<id>\t<fingerprint>` per line, in corpus
- * order. Text rather than JSON so that `git diff` on a re-baseline reads as
- * "these 41 cases moved" instead of one reflowed blob, and so an individual
- * case can be found with grep.
+ * One plain-text file per surface, `<id>\t<fingerprint>` per line. Text rather
+ * than JSON so a re-baseline reads in `git diff` as "these cases moved" instead
+ * of one reflowed blob, and so a single case can be found with grep.
  */
 
 import { join } from "node:path";
@@ -24,7 +21,7 @@ export function manifestPath(surface: SurfaceName): string {
 
 export const SUMMARY_PATH = join(MANIFEST_DIR, "summary.json");
 
-/** A single fingerprint over the whole surface, so a mismatch can be detected in one comparison. */
+/** One fingerprint over the whole surface, so a mismatch is detectable in a single comparison. */
 export function aggregateFingerprint(run: SurfaceRun): string {
 	const hasher = new Bun.CryptoHasher("sha256");
 	for (let i = 0; i < run.ids.length; i++) {
@@ -78,7 +75,7 @@ export interface Mismatch {
 	actual: string | undefined;
 }
 
-/** Compare a fresh run against a stored manifest. Order-insensitive; reports adds, drops and changes. */
+/** Order-insensitive, so adds, drops and changes are all reported. */
 export function compareRun(run: SurfaceRun, stored: Map<string, string>): Mismatch[] {
 	const out: Mismatch[] = [];
 	const fresh = new Map<string, string>();

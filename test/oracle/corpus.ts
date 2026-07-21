@@ -1,46 +1,21 @@
 /**
- * The oracle corpus: a fixed, deterministic set of inputs that the parity
- * contract is evaluated over.
+ * The fixed set of inputs the parity contract is evaluated over.
  *
- * Design rules, in order of importance:
+ * Editing this file moves every downstream fingerprint, so growing the corpus is
+ * an explicit act: bump `CORPUS_VERSION`, re-baseline, and never do it in the
+ * same commit as a behaviour change or the diff becomes unreadable.
  *
- * 1. **Deterministic.** No `Math.random()`, no `new Date()`, no filesystem, no
- *    reaching into upstream internals. Same code in, same corpus out, forever.
- *    A corpus that drifts turns every fingerprint into noise.
- *
- * 2. **Frozen.** Changing this file changes every downstream fingerprint. That
- *    is allowed but it is an explicit act: bump `CORPUS_VERSION` and re-baseline.
- *    Never grow the corpus in the same commit as a behaviour change, or the
- *    diff cannot be read.
- *
- * 3. **Targeted enumeration over sampling where the space is small enough.**
- *    神煞 triggers are sparse (some fire on 3 of the 60 day pillars), so uniform
- *    random sampling of a 200-year window would leave them nearly uncovered.
- *    The `daypillar` and `city` layers are exhaustive for exactly this reason.
- *
- * What each layer is defending, and against what:
- *
- * | layer     | guards                                          |
- * | --------- | ----------------------------------------------- |
- * | random    | broad regression surface, 200-year calendar span |
- * | daypillar | all 60 日柱, hence all 10 sparse 神煞 day-pillar sets and the full 旬空 rotation |
- * | midnight  | 早晚子 (`sect` 1 vs 2) and true-solar-time correction crossing midnight |
- * | lichun    | 年柱 boundary at 立春, the single most error-prone instant in the calendar |
- * | jieqi     | 月柱 boundary at each of the 12 節 |
- * | city      | every `CITY_CACHE` key and alias, hence the whole 真太阳时 path and the 5 standard-meridian overrides |
+ * Nothing here may consult the clock, the filesystem, or `Math.random()`.
  */
 
 import { SolarTerm } from "tyme4ts";
 import { ALL_CITY_NAMES, CANONICAL_CITIES, MERIDIAN_OVERRIDE_CITIES } from "./cities.js";
 import { mulberry32 } from "./prng.js";
 
-/**
- * Bump when the corpus contents change. Recorded in the manifest so a stale
- * baseline is reported as "different corpus", not as "behaviour regression".
- */
+/** Recorded in the manifest so a stale baseline reads as "different corpus", not "regression". */
 export const CORPUS_VERSION = 1;
 
-/** The full upstream input space, including the fields our MCP schema does not expose. */
+/** The full upstream input space, including the fields the MCP schema does not expose. */
 export interface CoreInput {
 	year: number;
 	month: number;
@@ -59,7 +34,6 @@ export interface CoreInput {
 export type Layer = "random" | "daypillar" | "midnight" | "lichun" | "jieqi" | "city";
 
 export interface OracleCase {
-	/** Stable, unique, human-readable. Sorts meaningfully. */
 	id: string;
 	layer: Layer;
 	core: CoreInput;
@@ -72,10 +46,6 @@ export interface OracleCase {
 const YEAR_MIN = 1900;
 const YEAR_MAX = 2100;
 
-// ---------------------------------------------------------------------------
-// wall-clock arithmetic
-// ---------------------------------------------------------------------------
-
 interface Wall {
 	year: number;
 	month: number;
@@ -84,12 +54,7 @@ interface Wall {
 	minute: number;
 }
 
-/**
- * Add minutes to a wall-clock stamp. `Date` is used purely as a civil-calendar
- * calculator over UTC (no timezone semantics are involved) so that leap years
- * and month lengths come from one battle-tested implementation instead of a
- * hand-rolled one.
- */
+/** `Date` is used purely as a civil-calendar calculator over UTC; no timezone semantics apply. */
 function addMinutes(w: Wall, delta: number): Wall {
 	const d = new Date(0);
 	d.setUTCFullYear(w.year, w.month - 1, w.day);
@@ -117,7 +82,6 @@ function isoDate(year: number, month: number, day: number): string {
 	return `${year}-${pad2(month)}-${pad2(day)}`;
 }
 
-/** Wall-clock instant of a solar term, at minute granularity. */
 function termInstant(year: number, name: string): Wall {
 	const t = SolarTerm.fromName(year, name).getJulianDay().getSolarTime();
 	return {
@@ -129,7 +93,7 @@ function termInstant(year: number, name: string): Wall {
 	};
 }
 
-/** The 12 節 that open a 干支 month, in calendar order starting at 立春. */
+/** The 12 節 that open a 干支 month, in calendar order from 立春. */
 export const JIE_NAMES = [
 	"立春",
 	"惊蛰",
@@ -145,15 +109,9 @@ export const JIE_NAMES = [
 	"小寒",
 ] as const;
 
-// ---------------------------------------------------------------------------
-// layers
-// ---------------------------------------------------------------------------
-
 /**
- * Reference dates deliberately span the 元旦-to-立春 window, because that is the
- * only region where the 立春-bounded 干支年 differs from the Gregorian year. A
- * corpus that only sampled mid-year would have zero coverage of the exact
- * behaviour `time/sexagenaryYear.ts` exists to get right.
+ * Deliberately spans the Jan 1 to 立春 window, the only region where the
+ * 立春-bounded 干支年 differs from the Gregorian year.
  */
 const REFERENCE_DATES = [
 	"2026-01-01",
@@ -192,8 +150,7 @@ function randomLayer(): OracleCase[] {
 			sect: rng.chance(0.5) ? 1 : 2,
 		};
 
-		// Three location modes, so the 真太阳时 path is entered by city lookup, by
-		// raw coordinates, and not at all.
+		// Enter the 真太阳时 path by city lookup, by raw coordinates, and not at all.
 		const mode = rng.int(0, 2);
 		if (mode === 0) {
 			core.city = rng.chance(0.2) ? rng.pick(MERIDIAN_OVERRIDE_CITIES) : rng.pick(ALL_CITY_NAMES);
@@ -216,10 +173,9 @@ function randomLayer(): OracleCase[] {
 }
 
 /**
- * 60 consecutive days, which by construction is exactly one full 甲子 cycle of
- * 日柱. This single layer covers every one of the 10 sparse 神煞 day-pillar sets
- * (魁罡, 十恶大败, 阴差阳错, 孤鸾煞, 八专, 进神, 十灵, 六秀, 九丑, 天赦) and every
- * position of the 旬空 rotation. The start date is arbitrary but fixed.
+ * 60 consecutive days is exactly one 甲子 cycle of 日柱, which covers all ten
+ * sparse 神煞 day-pillar sets and every position of the 旬空 rotation. Random
+ * sampling would miss most of them: some fire on three day pillars out of sixty.
  */
 function dayPillarLayer(): OracleCase[] {
 	const start: Wall = { year: 1984, month: 2, day: 2, hour: 10, minute: 30 };
@@ -245,15 +201,13 @@ function dayPillarLayer(): OracleCase[] {
 }
 
 /**
- * 22:30 through 01:30 at 5-minute steps.
+ * 22:30 to 01:30 at 5-minute steps. Three things interact in this band and
+ * nowhere else: 早子/晚子 (`sect` 1 puts 23:00 on the next day's pillar, `sect` 2
+ * on today's), the 时辰 index rolling over 子时, and a true-solar-time correction
+ * large enough to push the corrected instant into a different calendar day.
  *
- * Three interacting things break in this band and only in this band:
- * 早子/晚子 (`sect` 1 puts 23:00 on the next day's pillar, `sect` 2 on today's),
- * the 时辰 index rolling over 子时, and a true-solar-time correction large enough
- * to push the corrected instant across midnight into a different calendar day.
- * 首尔 is chosen for the corrected variant because its standard-meridian override
- * produces the largest correction in the table (~ -32 min against a naive
- * rounding that would give +30 min).
+ * 首尔 is the corrected variant because its standard-meridian override produces
+ * the largest correction in the table.
  */
 function midnightLayer(): OracleCase[] {
 	const bases: Wall[] = [
@@ -289,11 +243,9 @@ function midnightLayer(): OracleCase[] {
 }
 
 /**
- * Every year's 立春 instant, probed at seven offsets spanning +/- 48 hours.
- *
- * The +/- 1 minute pair is the one that matters: it is the only pair where a
- * one-minute input difference must flip the 年柱, and any rounding error in the
- * solar-term computation shows up here first.
+ * The +/-1 minute pair is the reason this layer exists: it is the only place a
+ * one-minute input difference must flip the 年柱, so a rounding error in the
+ * solar-term computation surfaces here first.
  */
 const LICHUN_OFFSETS_MINUTES = [-2880, -60, -1, 0, 1, 60, 2880] as const;
 
@@ -314,8 +266,8 @@ function lichunLayer(): OracleCase[] {
 					minute: w.minute,
 					gender: y % 2 === 0 ? 1 : 0,
 				},
-				// 立春-adjacent charts are read against 立春-adjacent reference dates on
-				// purpose: this is where 干支年 arithmetic is most likely to be off by one.
+				// 立春-adjacent charts read against 立春-adjacent reference dates, where
+				// 干支年 arithmetic is most likely to be off by one.
 				referenceDate: REFERENCE_DATES[y % REFERENCE_DATES.length] as string,
 			});
 		}
@@ -323,7 +275,7 @@ function lichunLayer(): OracleCase[] {
 	return cases;
 }
 
-/** Sampled years rather than all 201, because 12 節 x 3 offsets is already 36 cases per year. */
+/** Sampled rather than all 201 years, because 12 節 x 3 offsets is already 36 cases per year. */
 const JIEQI_YEAR_STEP = 7;
 const JIEQI_OFFSETS_MINUTES = [-1, 0, 1] as const;
 
@@ -354,13 +306,10 @@ function jieqiLayer(): OracleCase[] {
 }
 
 /**
- * Every accepted city string, canonical and alias, at one fixed birth instant.
- *
- * Exhaustive rather than sampled because this layer is the entire test for
- * `cityCache` + `solarTime`, and a single wrong coordinate in a 91-entry table
- * is invisible to random sampling but shifts that city's hour pillar forever.
- * The instant is chosen near a 时辰 boundary so that a correction of a few
- * minutes is enough to change the visible output.
+ * Every accepted city string, canonical and alias. Exhaustive because a single
+ * wrong coordinate in the table is invisible to sampling yet shifts that city's
+ * hour pillar forever. The instant sits near a 时辰 boundary so a correction of a
+ * few minutes is enough to change the visible output.
  */
 function cityLayer(): OracleCase[] {
 	return ALL_CITY_NAMES.map((city, i) => ({
@@ -379,16 +328,9 @@ function cityLayer(): OracleCase[] {
 	}));
 }
 
-// ---------------------------------------------------------------------------
-
 let cached: OracleCase[] | null = null;
 
-/**
- * Assemble the corpus from scratch, bypassing the memo.
- *
- * Only the determinism test needs this: comparing `buildCorpus()` against itself
- * would compare a cached object with itself and prove nothing.
- */
+/** Only the determinism test needs this: `buildCorpus()` against itself proves nothing. */
 export function buildCorpusUncached(): OracleCase[] {
 	const all = [
 		...randomLayer(),
@@ -406,13 +348,13 @@ export function buildCorpusUncached(): OracleCase[] {
 	return all;
 }
 
-/** The full corpus, in a stable order. Memoised: building it costs ~2500 solar-term computations. */
+/** Memoised: building the corpus costs ~2500 solar-term computations. */
 export function buildCorpus(): OracleCase[] {
 	if (!cached) cached = buildCorpusUncached();
 	return cached;
 }
 
-/** Exposed so coverage reporting can assert the exhaustive layers really are exhaustive. */
+/** Exposed so the tests can assert the exhaustive layers really are exhaustive. */
 export const CORPUS_EXPECTATIONS = {
 	dayPillarCount: 60,
 	cityCount: ALL_CITY_NAMES.length,

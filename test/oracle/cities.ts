@@ -1,14 +1,10 @@
 /**
- * Frozen snapshot of shunshi-bazi-core@0.2.0 `CITY_CACHE` keys and `CITY_ALIASES` keys.
+ * Frozen snapshot of shunshi-bazi-core@0.2.0 `CITY_CACHE` and `CITY_ALIASES` keys.
  *
- * Snapshotted rather than imported because upstream's exports map only opens `"."` —
- * reaching into `dist/lib/cityCache.js` would be a deep import into a private path.
- * More importantly the corpus must stay FIXED: if upstream (or the vendored copy)
- * adds a city, the corpus must not silently grow, or every fingerprint shifts and
- * the baseline stops meaning anything. Growing the corpus is an explicit act:
- * edit this file and re-baseline.
- *
- * Regenerate with: bun run test/oracle/cli.ts cities
+ * Snapshotted rather than imported so the corpus cannot silently grow when
+ * upstream adds a city, which would shift every fingerprint at once. Upstream's
+ * exports map only opens `"."` in any case, so importing means a deep import
+ * into a private path.
  */
 
 /** Canonical (Simplified Chinese) city names. */
@@ -107,13 +103,13 @@ export const CANONICAL_CITIES: readonly string[] = [
 ];
 
 /**
- * Cities whose clock-timezone standard meridian is NOT `Math.round(longitude/15)*15`.
- * These are the only inputs that exercise the `standardMeridian` override path,
- * and getting one wrong shifts the 时辰 and therefore the whole hour pillar.
+ * Cities whose standard meridian is not `Math.round(longitude/15)*15`. The only
+ * inputs that exercise the `standardMeridian` override path, where one wrong
+ * entry shifts the 时辰 and therefore the whole hour pillar.
  */
 export const MERIDIAN_OVERRIDE_CITIES: readonly string[] = ["首尔", "仁川", "光州", "大田", "巴黎"];
 
-/** Non-canonical aliases (繁體 / 日本漢字 / 한글). */
+/** Non-canonical aliases: Traditional Chinese, Japanese kanji, Hangul. */
 export const CITY_ALIAS_NAMES: readonly string[] = [
 	"廣州",
 	"重慶",

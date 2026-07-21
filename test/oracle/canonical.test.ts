@@ -10,8 +10,8 @@ describe("canonicalize", () => {
 	});
 
 	test("array order DOES affect the result", () => {
-		// 神煞 arrays are order-sensitive by the parity contract. This is the single
-		// assertion that stops a "harmless" sort from slipping through unnoticed.
+		// 神煞 arrays are order-sensitive by the parity contract, so this is what
+		// stops a "harmless" sort from slipping through.
 		expect(canonicalize(["天乙贵人", "桃花"])).not.toBe(canonicalize(["桃花", "天乙贵人"]));
 	});
 
@@ -25,8 +25,8 @@ describe("canonicalize", () => {
 	});
 
 	test("non-finite numbers throw rather than silently becoming null", () => {
-		// JSON.stringify turns NaN into null, which would make a genuine計算 bug
-		// fingerprint identically to a legitimate null. Refuse instead.
+		// JSON.stringify turns NaN into null, which would fingerprint a genuine
+		// arithmetic bug identically to a legitimate null.
 		expect(() => canonicalize({ 修正分钟: Number.NaN })).toThrow(/non-finite/);
 		expect(() => canonicalize({ x: Number.POSITIVE_INFINITY })).toThrow(/non-finite/);
 	});

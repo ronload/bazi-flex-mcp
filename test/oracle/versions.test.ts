@@ -1,14 +1,11 @@
 /**
- * Installed-dependency version guard.
+ * Guards a real failure: `bun.lock` recorded shunshi-bazi-core@0.2.0 while
+ * node_modules held 0.1.0, so local and CI ran different versions for months.
+ * `--frozen-lockfile` cannot catch that, since it only asserts the lockfile is
+ * unmodified by the install. These assertions read the installed artefact.
  *
- * 這個測試存在的理由是一次真實故障：`bun.lock` 記 shunshi-bazi-core@0.2.0，
- * 但 node_modules 實際躺著 0.1.0，而 CI 用 `bun install --frozen-lockfile`
- * 裝的是 0.2.0 — 本機與 production 跑在不同版本上好幾個月沒被發現。
- *
- * `--frozen-lockfile` 抓不到這種故障：它只保證 install 過程不修改 lockfile，
- * 對磁碟上已存在的殘骸沒有任何斷言。所以這裡讀的是**實裝的 package.json**。
- *
- * 版本比對用精確字串相等而非 semver 範圍滿足 — 會滿足範圍的漂移正是要防的東西。
+ * Exact string equality rather than semver satisfaction, because drift that
+ * satisfies a range is exactly what this is defending against.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -41,7 +38,7 @@ describe("installed dependency versions", () => {
 		});
 
 		test(`${pkg} resolves inside this repo's node_modules`, () => {
-			// Catches a hoisted-elsewhere or duplicated copy, which a version check alone misses.
+			// Catches a hoisted or duplicated copy, which a version check alone misses.
 			const resolved = Bun.resolveSync(pkg, import.meta.dir);
 			expect(
 				resolved.startsWith(`${REPO_NODE_MODULES}/`),
@@ -51,8 +48,8 @@ describe("installed dependency versions", () => {
 	}
 
 	test("tyme4ts is pinned without a range operator", async () => {
-		// tyme4ts is the calendar engine. shunshi-bazi-core declares ^1.3.4, so a caret
-		// here would let 1.5.x arrive silently and move every 節氣 boundary under src/.
+		// shunshi-bazi-core declares ^1.3.4, so a caret here would let 1.5.x arrive
+		// silently and move every 節氣 boundary under src/.
 		const root = (await Bun.file(join(REPO_ROOT, "package.json")).json()) as {
 			dependencies: Record<string, string>;
 		};
