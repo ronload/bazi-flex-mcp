@@ -12,7 +12,7 @@ import {
 	STEM_ELEMENT,
 } from "../../../ganzhi/data.js";
 import { elementRelation } from "../../../ganzhi/index.js";
-import type { Pillars } from "../types.js";
+import type { PillarMap } from "../types.js";
 import type { TenGodStat } from "./tenGodStats.js";
 
 export interface DecisionAids {
@@ -40,7 +40,7 @@ export interface DecisionAids {
 }
 
 export function computeDecisionAids(
-	bazi: { 日主: string; 柱位详细: Pillars },
+	bazi: { 日主: string; 柱位详细: PillarMap },
 	tenGodStats: Record<string, TenGodStat>,
 	pillarKeys: readonly PillarKey[] = PILLAR_KEYS,
 ): DecisionAids {
@@ -67,6 +67,7 @@ export function computeDecisionAids(
 	let 总根气 = 0;
 	for (const key of pillarKeys) {
 		const pillar = bazi.柱位详细[`${key}柱` as const];
+		if (pillar === undefined) continue;
 		const hidden = pillar.藏干;
 		const matches: string[] = [];
 		let score = 0;
