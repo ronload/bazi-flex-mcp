@@ -1,5 +1,11 @@
-import { actualAgeAt } from "../../time/age.js";
-import { chineseDateTimeToIso, fmtDtToIso, parseIsoLikeDate } from "../../time/iso.js";
+import { chineseDateTimeToIso, fmtDtToIso } from "../../time/iso.js";
+import {
+	type BirthDate,
+	deriveXunKong,
+	mapDayun,
+	remapCorePillars,
+	remapPillarKongWang,
+} from "../shared/pillars.js";
 import type { ResolvedChartRequest } from "../shared/request.js";
 import { computeDecisionAids } from "./lib/decisionAids.js";
 import { computeLiunian } from "./lib/liunian.js";
@@ -18,49 +24,19 @@ const SCORING_METHOD = {
 	upstream: "shunshi-bazi-core",
 } as const;
 
-/**
- * Restructure a pillar's 空亡 surface:
- *   - original `空亡` (joined-string of the pillar's own 旬 voids) → `所在旬空亡: string[]`
- *   - new `落空亡: { 日柱旬, 年柱旬 }` — does this pillar's earth branch fall into
- *     day-xun void / year-xun void. This mirrors the boolean test that upstream
- *     applies when injecting the `"空亡"` tag into 神煞, but surfaces the result
- *     as a structured field so consumers don't conflate it with `所在旬空亡`.
- */
-function remapPillarKongWang<P extends { 地支: string; 空亡: string }>(
-	pillar: P,
-	dayKongSet: ReadonlySet<string>,
-	yearKongSet: ReadonlySet<string>,
-): Omit<P, "空亡"> & { 所在旬空亡: string[]; 落空亡: { 日柱旬: boolean; 年柱旬: boolean } } {
-	const { 空亡, ...rest } = pillar;
-	return {
-		...rest,
-		所在旬空亡: [...空亡],
-		落空亡: {
-			日柱旬: dayKongSet.has(pillar.地支),
-			年柱旬: yearKongSet.has(pillar.地支),
-		},
-	};
-}
-
 export function enrichResult(
 	result: GetBaziChartResult,
-	birth: { year: number; month: number; day: number },
+	birth: BirthDate,
 	req: ResolvedChartRequest,
 ) {
 	const bazi = result.八字;
-	const { referenceDate, referenceYear: refYear, liunianRange: effectiveLiunianRange } = req;
-	const startMd = parseIsoLikeDate(bazi.起运日期);
+	const { referenceDate, liunianRange } = req;
 	const tenGodStats = computeTenGodStats(bazi.柱位详细);
 	const pillarRelations = computePillarRelations(bazi);
-	const liunian = computeLiunian(bazi.日主, effectiveLiunianRange, req.currentSexagenaryYear);
+	const liunian = computeLiunian(bazi.日主, liunianRange, req.currentSexagenaryYear);
 	const decisionAids = computeDecisionAids(bazi, tenGodStats);
 	const solarIso = chineseDateTimeToIso(bazi.公历);
-
-	// 旬空 — derive from per-pillar 空亡 strings (each is already a 2-char xun-void pair).
-	const dayKong = [...bazi.柱位详细.日柱.空亡];
-	const yearKong = [...bazi.柱位详细.年柱.空亡];
-	const dayKongSet = new Set(dayKong);
-	const yearKongSet = new Set(yearKong);
+	const xunKong = deriveXunKong(bazi.柱位详细);
 
 	return {
 		...result,
@@ -83,42 +59,17 @@ export function enrichResult(
 		八字: {
 			...bazi,
 			公历: solarIso,
-			旬空: { 日柱旬空: dayKong, 年柱旬空: yearKong },
+			旬空: xunKong,
 			柱位详细: {
-				年柱: remapPillarKongWang(bazi.柱位详细.年柱, dayKongSet, yearKongSet),
-				月柱: remapPillarKongWang(bazi.柱位详细.月柱, dayKongSet, yearKongSet),
-				日柱: {
-					...remapPillarKongWang(bazi.柱位详细.日柱, dayKongSet, yearKongSet),
-					主星: null,
-					label: "日主",
-					isDayMaster: true,
-				},
-				时柱: remapPillarKongWang(bazi.柱位详细.时柱, dayKongSet, yearKongSet),
+				...remapCorePillars(bazi.柱位详细, xunKong),
+				时柱: remapPillarKongWang(bazi.柱位详细.时柱, xunKong),
 			},
 			十神统计: tenGodStats,
 			柱间关系: pillarRelations,
 			流年: liunian,
-			流年范围: effectiveLiunianRange,
+			流年范围: liunianRange,
 			决策辅助: decisionAids,
-			大运: bazi.大运.map((yun) => {
-				const remapped = remapPillarKongWang(yun, dayKongSet, yearKongSet);
-				return {
-					...remapped,
-					日主关系: remapped.日主关系 === "" ? null : remapped.日主关系,
-					当前: refYear >= remapped.起始年份 && refYear <= remapped.结束年份,
-					起始虚岁: remapped.起始年龄,
-					起始实岁: startMd
-						? actualAgeAt(
-								birth.year,
-								birth.month,
-								birth.day,
-								remapped.起始年份,
-								startMd.month,
-								startMd.day,
-							)
-						: remapped.起始年龄 - 1,
-				};
-			}),
+			大运: mapDayun(bazi.大运, { xunKong, req, birth, 起运日期: bazi.起运日期 }),
 		},
 	};
 }

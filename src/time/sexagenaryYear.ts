@@ -1,4 +1,5 @@
 import { SolarTerm } from "tyme4ts";
+import { parseIsoLikeDate } from "./iso.js";
 
 const TYME_MIN_YEAR = 1;
 const TYME_MAX_YEAR = 9999;
@@ -21,7 +22,7 @@ export function sexagenaryYearOfYmd(year: number, month: number, day: number): n
 }
 
 export function sexagenaryYearOfDate(iso: string): number {
-	const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(iso.trim());
-	if (!m) return Number(iso.slice(0, 4));
-	return sexagenaryYearOfYmd(Number(m[1]), Number(m[2]), Number(m[3]));
+	const d = parseIsoLikeDate(iso);
+	if (!d) return Number(iso.slice(0, 4));
+	return sexagenaryYearOfYmd(d.year, d.month, d.day);
 }

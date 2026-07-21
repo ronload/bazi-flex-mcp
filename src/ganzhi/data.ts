@@ -61,6 +61,9 @@ export const BRANCH_HIDDEN: Record<string, string[]> = {
 	亥: ["壬", "甲"],
 };
 
+/** Positional weights indexing into `BRANCH_HIDDEN`, so the two must stay together. */
+export const BRANCH_HIDDEN_WEIGHT = [1.0, 0.5, 0.3] as const;
+
 export const GEN_NEXT: Record<string, string> = {
 	木: "火",
 	火: "土",

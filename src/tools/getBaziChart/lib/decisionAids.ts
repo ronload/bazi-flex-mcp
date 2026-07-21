@@ -4,7 +4,13 @@
 // just surface the raw inputs (month-command relation, root presence,
 // transparent/hidden balance) so an LLM does not have to recompute them.
 
-import { BRANCH_HIDDEN, PILLAR_KEYS, type PillarKey, STEM_ELEMENT } from "../../../ganzhi/data.js";
+import {
+	BRANCH_HIDDEN,
+	BRANCH_HIDDEN_WEIGHT,
+	PILLAR_KEYS,
+	type PillarKey,
+	STEM_ELEMENT,
+} from "../../../ganzhi/data.js";
 import { elementRelation } from "../../../ganzhi/index.js";
 import type { Pillars } from "../types.js";
 import type { TenGodStat } from "./tenGodStats.js";
@@ -32,8 +38,6 @@ export interface DecisionAids {
 		异类共: number;
 	};
 }
-
-const CANG_WEIGHT = [1.0, 0.5, 0.3] as const;
 
 export function computeDecisionAids(
 	bazi: { 日主: string; 柱位详细: Pillars },
@@ -71,7 +75,7 @@ export function computeDecisionAids(
 			if (!stem) continue;
 			if (STEM_ELEMENT[stem] === 日主五行) {
 				matches.push(stem);
-				score += CANG_WEIGHT[i] ?? 0.3;
+				score += BRANCH_HIDDEN_WEIGHT[i] ?? 0.3;
 			}
 		}
 		总根气 += score;
