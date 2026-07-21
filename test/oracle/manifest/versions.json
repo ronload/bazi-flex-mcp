@@ -1,0 +1,8 @@
+{
+	"$comment": "Exact installed versions that the oracle baseline and the parity contract are pinned to. These are asserted against the INSTALLED node_modules artefact, not against bun.lock, because `bun install --frozen-lockfile` does not detect a stale node_modules (it only asserts the lockfile is unmodified). A drift here invalidates every fingerprint in manifest/fingerprints/.",
+	"dependencies": {
+		"shunshi-bazi-core": "0.2.0",
+		"tyme4ts": "1.4.6"
+	},
+	"corpusVersion": 1
+}

@@ -43,16 +43,17 @@
     "deploy:prod": "wrangler deploy --env production",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "lint": "biome lint ./src",
-    "format": "biome format --write ./src",
-    "check": "biome check --write ./src",
-    "check:ci": "biome ci ./src"
+    "lint": "biome lint ./src ./test",
+    "format": "biome format --write ./src ./test",
+    "check": "biome check --write ./src ./test",
+    "check:ci": "biome ci ./src ./test"
   },
   "dependencies": {
     "@hono/mcp": "^0.3.1",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "hono": "^4.12.31",
     "shunshi-bazi-core": "^0.2.0",
+    "tyme4ts": "1.4.6",
     "zod": "^4.0.0"
   },
   "overrides": {

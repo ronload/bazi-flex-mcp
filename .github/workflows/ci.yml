@@ -18,6 +18,12 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # --frozen-lockfile only asserts the lockfile is not modified by the install.
+      # This catches the case where it is, which means package.json and bun.lock
+      # disagree. The installed-artefact check lives in test/oracle/versions.test.ts.
+      - name: Assert lockfile is clean after install
+        run: git diff --exit-code bun.lock
+
       - name: Biome check
         run: bun run check:ci
 
