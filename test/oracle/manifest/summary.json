@@ -1,0 +1,21 @@
+{
+	"corpusVersion": 1,
+	"frozenInstant": "2026-06-15T12:00:00.000Z",
+	"surfaces": {
+		"core": {
+			"cases": 4914,
+			"deduped": 45,
+			"aggregate": "db51d39901f43a53"
+		},
+		"toolFull": {
+			"cases": 4811,
+			"deduped": 148,
+			"aggregate": "206b68baa283c889"
+		},
+		"toolPartial": {
+			"cases": 3030,
+			"deduped": 1929,
+			"aggregate": "7d114231bb54eca2"
+		}
+	}
+}

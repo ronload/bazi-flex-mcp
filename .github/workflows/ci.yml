@@ -32,3 +32,10 @@ jobs:
 
       - name: Test
         run: bun test
+
+      # Redundant with the parity tests inside `bun test`, and deliberately so:
+      # this step names the oracle in the CI log and prints the per-case
+      # "expected -> actual" list plus the explain/dump commands to investigate
+      # with, which an assertion failure cannot.
+      - name: Oracle parity
+        run: bun run oracle:check
