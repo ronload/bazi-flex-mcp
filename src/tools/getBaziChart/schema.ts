@@ -24,10 +24,14 @@ export const inputShape = {
 		.number()
 		.int()
 		.optional()
-		.describe("Start year (Gregorian) for the 流年 table. Defaults to referenceDate year - 3."),
+		.describe(
+			"Start year for the 流年 table. Years are 立春-bounded 干支年, not Gregorian years. Defaults to the 干支年 of referenceDate minus 3.",
+		),
 	liunianEnd: z
 		.number()
 		.int()
 		.optional()
-		.describe("End year (Gregorian) for the 流年 table. Defaults to referenceDate year + 3."),
+		.describe(
+			"End year for the 流年 table. Years are 立春-bounded 干支年, not Gregorian years. Defaults to the 干支年 of referenceDate plus 3.",
+		),
 };

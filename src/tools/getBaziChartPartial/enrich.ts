@@ -116,7 +116,7 @@ export function enrichPartialResult(
 	const tenGodStats = computeTenGodStats(partialPillars);
 	const allPillarRelations = computePillarRelations(bazi);
 	const pillarRelations = allPillarRelations.filter((r) => !r.pillars.includes("时"));
-	const liunian = computeLiunian(bazi.日主, effectiveLiunianRange, req.referenceYear);
+	const liunian = computeLiunian(bazi.日主, effectiveLiunianRange, req.currentSexagenaryYear);
 	const decisionAids = computeDecisionAids(bazi, tenGodStats, PARTIAL_PILLAR_KEYS);
 	const wuxingScore = recomputeWuxingScore(partialPillars, bazi.日主);
 

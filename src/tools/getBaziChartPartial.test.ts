@@ -151,6 +151,20 @@ describe("enrichPartialResult", () => {
 		expect(enriched.八字.流年.map((e) => e.干支)).toEqual(["甲辰", "乙巳", "丙午", "丁未", "戊申"]);
 	});
 
+	test("流年 当前 以立春為年界 (與 full 模式同一條路徑)", () => {
+		// 兩份 enrich 曾經是逐字重複的複本;參照解析抽出後不可能再漂移,
+		// 這條測試就是釘住那個保證。
+		const raw = getBaziChart({ year: 2002, month: 5, day: 17, hour: 12, minute: 0, gender: 1 });
+		const birth2002 = { year: 2002, month: 5, day: 17 };
+		const range = { start: 2024, end: 2028 };
+
+		const preLichun = enrichPartialResult(raw, birth2002, req("2026-01-15", range));
+		expect(preLichun.八字.流年.find((x) => x.当前)?.干支).toBe("乙巳");
+
+		const postLichun = enrichPartialResult(raw, birth2002, req("2026-02-04", range));
+		expect(postLichun.八字.流年.find((x) => x.当前)?.干支).toBe("丙午");
+	});
+
 	test("exposes meta.disclaimer with key fields", () => {
 		const enriched = buildPartial();
 		expect(enriched.meta.disclaimer).toBeDefined();

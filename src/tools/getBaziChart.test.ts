@@ -214,6 +214,53 @@ describe("enrichResult", () => {
 		expect(current?.藏干十神).toEqual(["食神", "偏财"]);
 	});
 
+	test("流年 当前 以立春為年界,不是元旦", () => {
+		const raw = getBaziChart({
+			year: 2002,
+			month: 5,
+			day: 17,
+			hour: 6,
+			minute: 0,
+			gender: 1,
+		});
+		const birth2002 = { year: 2002, month: 5, day: 17 };
+		const range = { start: 2024, end: 2028 };
+
+		// 立春 2026 落在 02-04。之前仍屬 2025 乙巳。
+		for (const d of ["2026-01-15", "2026-02-03"]) {
+			const e = enrichResult(raw, birth2002, req(d, range));
+			const cur = e.八字.流年.find((x) => x.当前);
+			expect(cur?.年份, `referenceDate ${d}`).toBe(2025);
+			expect(cur?.干支, `referenceDate ${d}`).toBe("乙巳");
+		}
+
+		// 立春當日起換 2026 丙午
+		for (const d of ["2026-02-04", "2026-07-21"]) {
+			const e = enrichResult(raw, birth2002, req(d, range));
+			const cur = e.八字.流年.find((x) => x.当前);
+			expect(cur?.年份, `referenceDate ${d}`).toBe(2026);
+			expect(cur?.干支, `referenceDate ${d}`).toBe("丙午");
+		}
+	});
+
+	test("当前 的干支年落在明確視窗外時,沒有任何一年是 当前", () => {
+		// 這是修正引入的新情形,刻意保留而不做夾取:參照時刻確實不在請求的視窗內。
+		const raw = getBaziChart({ year: 2002, month: 5, day: 17, hour: 6, minute: 0, gender: 1 });
+		const e = enrichResult(
+			raw,
+			{ year: 2002, month: 5, day: 17 },
+			req("2026-01-15", { start: 2026, end: 2026 }),
+		);
+		expect(e.八字.流年.some((x) => x.当前)).toBe(false);
+	});
+
+	test("預設 流年 視窗在立春前以干支年為心", () => {
+		const raw = getBaziChart({ year: 2002, month: 5, day: 17, hour: 6, minute: 0, gender: 1 });
+		const e = enrichResult(raw, { year: 2002, month: 5, day: 17 }, req("2026-01-15"));
+		expect(e.八字.流年范围).toEqual({ start: 2022, end: 2028 });
+		expect(e.八字.流年.find((x) => x.当前)?.年份).toBe(2025);
+	});
+
 	test("computeLiunian covers all ten-god rules (生剋陰陽)", () => {
 		// 日主 甲 (木陽) — 窮舉十神
 		const entries = computeLiunian("甲", { start: 1984, end: 1993 }, 1984);

@@ -52,7 +52,7 @@ export function enrichResult(
 	const startMd = parseIsoLikeDate(bazi.起运日期);
 	const tenGodStats = computeTenGodStats(bazi.柱位详细);
 	const pillarRelations = computePillarRelations(bazi);
-	const liunian = computeLiunian(bazi.日主, effectiveLiunianRange, req.referenceYear);
+	const liunian = computeLiunian(bazi.日主, effectiveLiunianRange, req.currentSexagenaryYear);
 	const decisionAids = computeDecisionAids(bazi, tenGodStats);
 	const solarIso = chineseDateTimeToIso(bazi.公历);
 
