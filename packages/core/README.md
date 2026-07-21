@@ -35,20 +35,25 @@ matches the one in the upstream repository, at both the repository root and
 this package's directory. That is what makes vendoring the TypeScript sources
 rather than the compiled `dist` legitimate.
 
-## Parity harnesses
+## Parity
 
-`test/vendorParity.test.ts` compares every vendored module against the compiled
-upstream artifact, reached by file path because the upstream exports map only
-opens `.`. That is what licenses editing vendored code: an edit that changes
-behaviour fails there.
+Parity with the published upstream package was established by a sweep harness
+before the dependency was dropped, and the committed oracle baseline in
+`test/oracle` is what carries that proof forward: it was captured while the
+package was still installed, so an unmoved `core` aggregate still means the
+in-repo calculation agrees with it.
 
-`test/chartParity.test.ts` does the same job one level up, comparing
-`getBaziChart` against the published package over a sweep of dates, hours,
-locations, genders and both sects. It compares `JSON.stringify` output, so key
-order counts too. That is what licenses `src/calendar/` being a rewrite rather
-than a copy.
+## Entry points
 
-Keep both until this package stops tracking upstream.
+`getBaziChart` needs a birth hour. `getThreePillarChart` does not, and it is a
+native three-pillar calculation rather than a full chart with the hour pillar
+stripped off afterwards.
+
+Without an hour, 年柱 and 月柱 have to pick a convention, because a 節 splits its
+own day. This package attributes the whole calendar day to the 節 that starts on
+it, and reports the other candidate in `节气歧义` rather than hiding it.
+`test/threePillars.test.ts` pins both halves: on days with no 節 the native chart
+must still match the noon full chart field for field, down to 神煞 and 起运日期.
 
 ## 子时分日法
 

@@ -341,8 +341,13 @@ export interface ShenshaInput {
   monthZhi: string;
   dayGan: string;
   dayZhi: string;
-  timeGan: string;
-  timeZhi: string;
+  /**
+   * Omit both when the birth hour is unknown. Every table is keyed by a real
+   * 干支, so the empty default matches nothing and 时柱 comes back empty; no
+   * other pillar reads the time pillar.
+   */
+  timeGan?: string;
+  timeZhi?: string;
   /** 年柱纳音, 例如 "大林木" (末字用于五行判定) */
   yearNayin?: string;
   /** 1 = 男, 0 = 女 (用于元辰) */
@@ -355,7 +360,7 @@ export interface ShenshaInput {
 export function calcShenshaForPillars(input: ShenshaInput): ShenshaResult {
   const {
     yearGan, yearZhi, monthGan, monthZhi,
-    dayGan, dayZhi, timeGan, timeZhi,
+    dayGan, dayZhi, timeGan = '', timeZhi = '',
     yearNayin = '', gender = 1,
   } = input;
 
