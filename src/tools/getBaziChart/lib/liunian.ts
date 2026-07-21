@@ -1,18 +1,10 @@
-// ─── 流年 ─────────────────────────────────────────────────────────────
-// 上游 `shunshi-bazi-core` v0.1 不提供流年/流月/流日 API (v0.2 roadmap
-// 已列入，見 node_modules/shunshi-bazi-core/README.md)。這裡以最小表驅動
-// 實作:只輸出年份、干支、主星(對日主十神)、藏干十神、当前。不做流年
-// vs 四柱/大運 的 pair 關係 — LLM 可從本命 `柱间关系` 結構 + 流年干支
-// 自行推演。
-//
-// TODO(upstream): 上游 v0.2 推出流年 API 後，移除本段 + 本地表，改用
-// upstream。屆時流年界點也會由上游精確處理(立春),本地 `(year-4)%60`
-// 算出的是「立春後主體那一年」，元旦~立春約 5 週屬於前一干支年。
+// shunshi-bazi-core has no 流年 API as of 0.2.0, so this table is built here.
 
 import { BRANCH_HIDDEN } from "../../../ganzhi/data.js";
 import { sexagenaryOfYear, tenStar } from "../../../ganzhi/index.js";
 
 export interface LiunianEntry {
+	/** 立春-bounded 干支年: 立春 of N through the day before 立春 of N+1. */
 	年份: number;
 	干支: string;
 	天干: string;
@@ -26,7 +18,7 @@ export interface LiunianEntry {
 export function computeLiunian(
 	dayMaster: string,
 	range: { start: number; end: number },
-	referenceYear: number,
+	currentSexagenaryYear: number,
 ): LiunianEntry[] {
 	const { start, end } = range;
 	if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return [];
@@ -42,7 +34,7 @@ export function computeLiunian(
 			主星: tenStar(dayMaster, 天干),
 			藏干: [...hidden],
 			藏干十神: hidden.map((g) => tenStar(dayMaster, g)),
-			当前: y === referenceYear,
+			当前: y === currentSexagenaryYear,
 		});
 	}
 	return out;

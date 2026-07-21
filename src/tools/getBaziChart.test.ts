@@ -8,6 +8,14 @@ import {
 	inputShape,
 	toolDescriptionLines,
 } from "./getBaziChart.js";
+import { resolveChartRequest } from "./shared/request.js";
+
+const req = (referenceDate: string, range?: { start: number; end: number }) =>
+	resolveChartRequest({
+		referenceDate,
+		liunianStart: range?.start,
+		liunianEnd: range?.end,
+	});
 
 describe("computeTenGodStats", () => {
 	test("separates transparent (年/月/时柱.主星) from hidden (all 副星)", () => {
@@ -51,7 +59,7 @@ describe("enrichResult", () => {
 
 	test("nulls 日柱.主星 and attaches day-master markers", () => {
 		const raw = getBaziChart(sampleInput);
-		const enriched = enrichResult(raw, birth, "2026-04-19");
+		const enriched = enrichResult(raw, birth, req("2026-04-19"));
 		const 日柱 = enriched.八字.柱位详细.日柱;
 
 		expect(日柱.主星).toBeNull();
@@ -61,7 +69,7 @@ describe("enrichResult", () => {
 
 	test("keeps real ten-gods on non-day pillars", () => {
 		const raw = getBaziChart(sampleInput);
-		const enriched = enrichResult(raw, birth, "2026-04-19");
+		const enriched = enrichResult(raw, birth, req("2026-04-19"));
 		for (const k of ["年柱", "月柱", "时柱"] as const) {
 			expect(typeof enriched.八字.柱位详细[k].主星).toBe("string");
 			expect(enriched.八字.柱位详细[k].主星).not.toBe("");
@@ -70,7 +78,7 @@ describe("enrichResult", () => {
 
 	test("normalises empty 日主关系 to null", () => {
 		const raw = getBaziChart(sampleInput);
-		const enriched = enrichResult(raw, birth, "2026-04-19");
+		const enriched = enrichResult(raw, birth, req("2026-04-19"));
 		for (const yun of enriched.八字.大运) {
 			expect(yun.日主关系 === null || typeof yun.日主关系 === "string").toBe(true);
 			if (typeof yun.日主关系 === "string") expect(yun.日主关系).not.toBe("");
@@ -79,7 +87,7 @@ describe("enrichResult", () => {
 
 	test("exposes meta.referenceDateUsed and meta.scoringMethod", () => {
 		const raw = getBaziChart(sampleInput);
-		const enriched = enrichResult(raw, birth, "2026-04-19");
+		const enriched = enrichResult(raw, birth, req("2026-04-19"));
 		expect(enriched.meta.referenceDateUsed).toBe("2026-04-19");
 		expect(enriched.meta.scoringMethod.algorithm).toBe("tiangan-canggan-weighted");
 		expect(enriched.meta.scoringMethod.weights.tiangan).toBe(1.0);
@@ -88,20 +96,20 @@ describe("enrichResult", () => {
 
 	test("recomputes 当前 from referenceDate", () => {
 		const raw = getBaziChart(sampleInput);
-		const past = enrichResult(raw, birth, "1950-01-01");
-		const future = enrichResult(raw, birth, "2200-01-01");
+		const past = enrichResult(raw, birth, req("1950-01-01"));
+		const future = enrichResult(raw, birth, req("2200-01-01"));
 		expect(past.八字.大运.every((y) => y.当前 === false)).toBe(true);
 		expect(future.八字.大运.every((y) => y.当前 === false)).toBe(true);
 
 		// At least one decade-cycle should match the birth year-range
-		const native = enrichResult(raw, birth, "2020-06-15");
+		const native = enrichResult(raw, birth, req("2020-06-15"));
 		const anyCurrent = native.八字.大运.some((y) => y.当前);
 		expect(anyCurrent).toBe(true);
 	});
 
 	test("populates 十神统计 with 透/藏/共 structure", () => {
 		const raw = getBaziChart(sampleInput);
-		const enriched = enrichResult(raw, birth, "2026-04-19");
+		const enriched = enrichResult(raw, birth, req("2026-04-19"));
 		const stats = enriched.八字.十神统计;
 
 		expect(Object.keys(stats).length).toBeGreaterThan(0);
@@ -120,7 +128,7 @@ describe("enrichResult", () => {
 
 	test("does not expose '元男'/'元女' anywhere in 主星 fields", () => {
 		const raw = getBaziChart(sampleInput);
-		const enriched = enrichResult(raw, birth, "2026-04-19");
+		const enriched = enrichResult(raw, birth, req("2026-04-19"));
 		for (const k of ["年柱", "月柱", "日柱", "时柱"] as const) {
 			const v = enriched.八字.柱位详细[k].主星;
 			expect(v).not.toBe("元男");
@@ -130,7 +138,7 @@ describe("enrichResult", () => {
 
 	test("normalises time strings to ISO 8601 with second precision", () => {
 		const raw = getBaziChart({ ...sampleInput, city: "北京" });
-		const enriched = enrichResult(raw, birth, "2026-04-19");
+		const enriched = enrichResult(raw, birth, req("2026-04-19"));
 		const isoRe = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/;
 
 		expect(enriched.输入.公历).toMatch(isoRe);
@@ -145,7 +153,7 @@ describe("enrichResult", () => {
 
 	test("adds 修正秒数 rounded from 修正分钟", () => {
 		const raw = getBaziChart({ ...sampleInput, city: "北京" });
-		const enriched = enrichResult(raw, birth, "2026-04-19");
+		const enriched = enrichResult(raw, birth, req("2026-04-19"));
 		expect(enriched.真太阳时).toBeDefined();
 		const 修正分钟 = enriched.真太阳时?.修正分钟 ?? 0;
 		expect(enriched.真太阳时?.修正秒数).toBe(Math.round(修正分钟 * 60));
@@ -153,7 +161,7 @@ describe("enrichResult", () => {
 
 	test("omits 真太阳时 block when no location is provided", () => {
 		const raw = getBaziChart(sampleInput);
-		const enriched = enrichResult(raw, birth, "2026-04-19");
+		const enriched = enrichResult(raw, birth, req("2026-04-19"));
 		expect(enriched.真太阳时).toBeUndefined();
 		// 八字.公历 still normalised even without 真太阳时
 		expect(enriched.八字.公历).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);
@@ -170,7 +178,7 @@ describe("enrichResult", () => {
 			minute: 0,
 			gender: 1,
 		});
-		const enriched = enrichResult(raw, { year: 2002, month: 5, day: 17 }, "2026-04-19");
+		const enriched = enrichResult(raw, { year: 2002, month: 5, day: 17 }, req("2026-04-19"));
 		const keClashes = enriched.八字.柱间关系.filter(
 			(r) => r.kind === "天干" && r.type === "克" && r.raw === "乙克己",
 		);
@@ -188,10 +196,11 @@ describe("enrichResult", () => {
 			minute: 0,
 			gender: 1,
 		});
-		const enriched = enrichResult(raw, { year: 2002, month: 5, day: 17 }, "2026-04-19", {
-			start: 2024,
-			end: 2028,
-		});
+		const enriched = enrichResult(
+			raw,
+			{ year: 2002, month: 5, day: 17 },
+			req("2026-04-19", { start: 2024, end: 2028 }),
+		);
 		expect(enriched.八字.流年范围).toEqual({ start: 2024, end: 2028 });
 		expect(enriched.八字.流年.map((e) => e.干支)).toEqual(["甲辰", "乙巳", "丙午", "丁未", "戊申"]);
 		const current = enriched.八字.流年.find((e) => e.当前);
@@ -202,6 +211,53 @@ describe("enrichResult", () => {
 		// 午藏干 丁,己 → 乙對丁 生同陰=食神;乙對己 克同陰=偏财
 		expect(current?.藏干).toEqual(["丁", "己"]);
 		expect(current?.藏干十神).toEqual(["食神", "偏财"]);
+	});
+
+	test("流年 当前 turns over at 立春, not on Jan 1", () => {
+		const raw = getBaziChart({
+			year: 2002,
+			month: 5,
+			day: 17,
+			hour: 6,
+			minute: 0,
+			gender: 1,
+		});
+		const birth2002 = { year: 2002, month: 5, day: 17 };
+		const range = { start: 2024, end: 2028 };
+
+		// 立春 2026 falls on Feb 4.
+		for (const d of ["2026-01-15", "2026-02-03"]) {
+			const e = enrichResult(raw, birth2002, req(d, range));
+			const cur = e.八字.流年.find((x) => x.当前);
+			expect(cur?.年份, `referenceDate ${d}`).toBe(2025);
+			expect(cur?.干支, `referenceDate ${d}`).toBe("乙巳");
+		}
+
+		for (const d of ["2026-02-04", "2026-07-21"]) {
+			const e = enrichResult(raw, birth2002, req(d, range));
+			const cur = e.八字.流年.find((x) => x.当前);
+			expect(cur?.年份, `referenceDate ${d}`).toBe(2026);
+			expect(cur?.干支, `referenceDate ${d}`).toBe("丙午");
+		}
+	});
+
+	test("no year is 当前 when the 干支年 falls outside an explicit window", () => {
+		// Left unclamped on purpose: the reference instant genuinely is not in the
+		// window the caller asked for.
+		const raw = getBaziChart({ year: 2002, month: 5, day: 17, hour: 6, minute: 0, gender: 1 });
+		const e = enrichResult(
+			raw,
+			{ year: 2002, month: 5, day: 17 },
+			req("2026-01-15", { start: 2026, end: 2026 }),
+		);
+		expect(e.八字.流年.some((x) => x.当前)).toBe(false);
+	});
+
+	test("the default window centres on the 干支年 before 立春", () => {
+		const raw = getBaziChart({ year: 2002, month: 5, day: 17, hour: 6, minute: 0, gender: 1 });
+		const e = enrichResult(raw, { year: 2002, month: 5, day: 17 }, req("2026-01-15"));
+		expect(e.八字.流年范围).toEqual({ start: 2022, end: 2028 });
+		expect(e.八字.流年.find((x) => x.当前)?.年份).toBe(2025);
 	});
 
 	test("computeLiunian covers all ten-god rules (生剋陰陽)", () => {
@@ -243,7 +299,7 @@ describe("enrichResult", () => {
 			minute: 0,
 			gender: 1,
 		});
-		const e = enrichResult(raw, { year: 2002, month: 5, day: 17 }, "2026-04-19");
+		const e = enrichResult(raw, { year: 2002, month: 5, day: 17 }, req("2026-04-19"));
 
 		expect(e.八字.旬空).toEqual({
 			日柱旬空: ["午", "未"],
@@ -281,7 +337,7 @@ describe("enrichResult", () => {
 			minute: 0,
 			gender: 1,
 		});
-		const e = enrichResult(raw, { year: 2002, month: 5, day: 17 }, "2026-04-19");
+		const e = enrichResult(raw, { year: 2002, month: 5, day: 17 }, req("2026-04-19"));
 		for (const k of ["年柱", "月柱", "日柱", "时柱"] as const) {
 			expect((e.八字.柱位详细[k] as Record<string, unknown>).空亡).toBeUndefined();
 			expect((e.八字.柱位详细[k] as Record<string, unknown>).所在旬空亡).toBeDefined();
@@ -300,7 +356,7 @@ describe("enrichResult", () => {
 			minute: 0,
 			gender: 1,
 		});
-		const e = enrichResult(raw, { year: 2002, month: 5, day: 17 }, "2026-04-19");
+		const e = enrichResult(raw, { year: 2002, month: 5, day: 17 }, req("2026-04-19"));
 		const aid = e.八字.决策辅助;
 
 		expect(aid.日主得令?.日主五行).toBe("木");
@@ -402,7 +458,7 @@ describe("enrichResult", () => {
 			minute: 0,
 			gender: 1,
 		});
-		const enriched = enrichResult(raw, { year: 1984, month: 2, day: 2 }, "2026-04-19");
+		const enriched = enrichResult(raw, { year: 1984, month: 2, day: 2 }, req("2026-04-19"));
 		// Every entry parses to a known type and carries at least 2 pillars
 		for (const rel of enriched.八字.柱间关系) {
 			expect(["相合", "相冲", "相害", "相破", "暗合", "自刑", "三刑", "克"]).toContain(rel.type);
@@ -420,7 +476,7 @@ describe("enrichResult", () => {
 			minute: 0,
 			gender: 1,
 		});
-		const e = enrichResult(raw, { year: 1990, month: 6, day: 15 }, "2026-04-19");
+		const e = enrichResult(raw, { year: 1990, month: 6, day: 15 }, req("2026-04-19"));
 		expect(e.八字.流年范围).toEqual({ start: 2023, end: 2029 });
 		expect(e.八字.流年).toHaveLength(7);
 	});
@@ -435,7 +491,7 @@ describe("enrichResult", () => {
 			minute: 0,
 			gender: 1,
 		});
-		const e = enrichResult(raw, { year: 2002, month: 5, day: 17 }, "2026-04-19");
+		const e = enrichResult(raw, { year: 2002, month: 5, day: 17 }, req("2026-04-19"));
 
 		const dayKong = new Set(e.八字.旬空.日柱旬空);
 		const yearKong = new Set(e.八字.旬空.年柱旬空);

@@ -18,6 +18,10 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # A modified lockfile means package.json and bun.lock disagree.
+      - name: Assert lockfile is clean after install
+        run: git diff --exit-code bun.lock
+
       - name: Biome check
         run: bun run check:ci
 
@@ -26,3 +30,8 @@ jobs:
 
       - name: Test
         run: bun test
+
+      # Redundant with the parity tests on purpose: this prints the per-case
+      # expected/actual list and the commands to investigate with.
+      - name: Oracle parity
+        run: bun run oracle:check

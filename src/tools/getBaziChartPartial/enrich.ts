@@ -6,6 +6,7 @@ import { computeLiunian } from "../getBaziChart/lib/liunian.js";
 import { computePillarRelations } from "../getBaziChart/lib/relations.js";
 import { computeTenGodStats } from "../getBaziChart/lib/tenGodStats.js";
 import type { GetBaziChartResult } from "../getBaziChart/types.js";
+import type { ResolvedChartRequest } from "../shared/request.js";
 
 const PARTIAL_PILLAR_KEYS: readonly PillarKey[] = ["年", "月", "日"] as const;
 
@@ -100,11 +101,10 @@ function remapPillarKongWang<P extends { 地支: string; 空亡: string }>(
 export function enrichPartialResult(
 	result: GetBaziChartResult,
 	birth: { year: number; month: number; day: number },
-	referenceDate: string,
-	liunianRange?: { start: number; end: number },
+	req: ResolvedChartRequest,
 ) {
 	const bazi = result.八字;
-	const refYear = Number(referenceDate.slice(0, 4));
+	const { referenceDate, referenceYear: refYear, liunianRange: effectiveLiunianRange } = req;
 	const startMd = parseIsoLikeDate(bazi.起运日期);
 
 	const partialPillars = {
@@ -116,8 +116,7 @@ export function enrichPartialResult(
 	const tenGodStats = computeTenGodStats(partialPillars);
 	const allPillarRelations = computePillarRelations(bazi);
 	const pillarRelations = allPillarRelations.filter((r) => !r.pillars.includes("时"));
-	const effectiveLiunianRange = liunianRange ?? { start: refYear - 3, end: refYear + 3 };
-	const liunian = computeLiunian(bazi.日主, effectiveLiunianRange, refYear);
+	const liunian = computeLiunian(bazi.日主, effectiveLiunianRange, req.currentSexagenaryYear);
 	const decisionAids = computeDecisionAids(bazi, tenGodStats, PARTIAL_PILLAR_KEYS);
 	const wuxingScore = recomputeWuxingScore(partialPillars, bazi.日主);
 
