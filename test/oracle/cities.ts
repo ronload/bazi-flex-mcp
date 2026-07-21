@@ -1,10 +1,8 @@
 /**
- * Frozen snapshot of shunshi-bazi-core@0.2.0 `CITY_CACHE` and `CITY_ALIASES` keys.
+ * Frozen snapshot of the `CITY_CACHE` and `CITY_ALIASES` keys as vendored.
  *
- * Snapshotted rather than imported so the corpus cannot silently grow when
- * upstream adds a city, which would shift every fingerprint at once. Upstream's
- * exports map only opens `"."` in any case, so importing means a deep import
- * into a private path.
+ * Snapshotted rather than imported so the corpus cannot silently grow when a
+ * city is added, which would shift every fingerprint at once.
  */
 
 /** Canonical (Simplified Chinese) city names. */

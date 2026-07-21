@@ -127,7 +127,7 @@ describe("corpus coverage", () => {
 	});
 
 	test("every 神煞 upstream can emit is triggered", () => {
-		// Taken from the 神煞 string literals in shunshi-bazi-core@0.2.0
+		// Taken from the 神煞 string literals as vendored
 		// dist/lib/shensha.js. If upstream adds one, this list must grow with it or
 		// the new table entry ships with no coverage.
 		const expected = [
