@@ -27,6 +27,13 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .cache
 *.tsbuildinfo
 
+# temp
+temp/
+tmp/
+TEMP.md
+temp.md
+
+
 # cloudflare wrangler
 .wrangler
 .dev.vars
