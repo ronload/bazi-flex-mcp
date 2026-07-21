@@ -1,14 +1,9 @@
-import {
-	BRANCH_HIDDEN,
-	BRANCH_HIDDEN_WEIGHT,
-	type PillarKey,
-	STEM_ELEMENT,
-} from "../../ganzhi/data.js";
+import type { PillarKey } from "../../ganzhi/data.js";
 import { computeDecisionAids } from "../getBaziChart/lib/decisionAids.js";
 import { computeLiunian } from "../getBaziChart/lib/liunian.js";
 import { computePillarRelations } from "../getBaziChart/lib/relations.js";
 import { computeTenGodStats } from "../getBaziChart/lib/tenGodStats.js";
-import type { GetBaziChartResult } from "../getBaziChart/types.js";
+import type { GetThreePillarChartResult } from "../getBaziChart/types.js";
 import { type BirthDate, deriveXunKong, mapDayun, remapCorePillars } from "../shared/pillars.js";
 import type { ResolvedChartRequest } from "../shared/request.js";
 
@@ -21,111 +16,52 @@ const SCORING_METHOD = {
 		canggan: { benqi: 1.0, zhongqi: 0.5, yuqi: 0.3 },
 	},
 	notes:
-		"Same weighting as the full-time chart, but summed over only 3 pillars (年/月/日) — time-pillar contributions are excluded because the birth hour is unknown. Treat values as relative presence, not classical 旺衰 strength.",
-	upstream: "@bazi-flex/core (post-processed: time pillar removed)",
+		"Same weighting as the full-time chart, but summed over only 3 pillars (年/月/日) because the birth hour is unknown. Treat values as relative presence, not classical 旺衰 strength.",
+	upstream: "@bazi-flex/core",
 } as const;
 
 const DISCLAIMER = {
-	时辰: "未提供。命盘以三柱（年/月/日）为准；时柱已从输出中剥除。",
-	占位时辰:
-		"上游 library 计算时使用 12:00 作为占位 hour（仅用于稳定取得日柱、避开 23:00 子时切换），随后在后处理中将所有依赖时辰的字段剥除或重算。",
-	依赖时辰已置null: ["命宫", "身宫", "胎元", "胎息"],
+	时辰: "未提供。命盘原生以三柱（年/月/日）计算，不引入任何占位时辰。",
+	年月柱定法:
+		"年柱/月柱采整日归属：交节当天的整日都算入新的月令（以及立春当天算入新的干支年）。若出生当天正好交节，见 八字.节气歧义 — 其中 此刻之前 才是交节前出生者的年/月柱。非交节日 八字.节气歧义 为 null。",
+	依赖时辰为null: ["命宫", "身宫", "胎元", "胎息"],
 	大运起运精度:
-		"起运方向（顺/逆）只看年柱阴阳 + 性别，不受时辰影响。起运精确日期（八字.起运、八字.起运日期）依节气到出生时刻的距离计算，未提供时辰时可能有 ±1 天到 ±数月误差，对应大运 起始年份/结束年份 也可能 ±1 年。请将其视为大略时间窗口而非精确边界。",
-	十神统计:
-		"已重算：透 计数仅来自 年柱.主星 + 月柱.主星（不含时柱主星）；藏 计数仅来自 年/月/日柱.副星（不含时柱副星）。",
-	柱间关系: "已过滤掉所有含 时 的 pair/triple；只保留 年/月/日 三柱之间的关系。",
-	刑冲合会:
-		"保留 upstream 的扁平字符串（无柱位标签），但其中可能仍含基于占位 12:00 时柱的关系条目，请改看已过滤的 八字.柱间关系。",
-	决策辅助:
-		"日主根气 已重算，只看 3 柱地支藏干；透藏平衡 自动随 十神统计 更新；日主得令 不依赖时辰，与 full-time 版相同。",
-	五行分值:
-		"已重算，扣除时柱天干（1.0）与时柱藏干（1.0/0.5/0.3）的贡献；占比按 3 柱新总分重新归一。",
-	真太阳时: "未输出。真太阳时校正只在已知时辰时才有意义，partial mode 不计算。",
+		"起运方向（顺/逆）只看年柱阴阳 + 性别，不受时辰影响。起运日期以「当天所属月令时段的中点」为基准推算，未知时辰时可能有 ±1 天到 ±数月误差，对应大运 起始年份/结束年份 也可能 ±1 年。请视为大略时间窗口而非精确边界。",
+	十神统计: "只统计 3 柱：透 = 年柱.主星 + 月柱.主星；藏 = 年/月/日柱.副星。",
+	刑冲合会: "只含 年/月/日 三柱之间的关系；带柱位标签的版本见 八字.柱间关系。",
+	五行分值: "只累加 3 柱的天干与藏干；占比按 3 柱总分归一。",
+	决策辅助: "日主根气 只看 3 柱地支藏干；日主得令 只依赖月柱，与 full-time 版相同。",
+	真太阳时: "未输出。真太阳时校正只会移动时柱，未知时辰时没有意义。",
 } as const;
 
-const WUXING_KEYS = ["金", "木", "水", "火", "土"] as const;
-
-interface WuxingEntry {
-	分值: number;
-	占比: string;
-}
-type WuxingScore = Record<(typeof WUXING_KEYS)[number], WuxingEntry> & { 日主五行: string };
-
-function recomputeWuxingScore(
-	pillars: {
-		年柱: { 天干: string; 地支: string };
-		月柱: { 天干: string; 地支: string };
-		日柱: { 天干: string; 地支: string };
-	},
-	dayMaster: string,
-): WuxingScore {
-	const scores: Record<string, number> = { 金: 0, 木: 0, 水: 0, 火: 0, 土: 0 };
-	const keys = ["年", "月", "日"] as const;
-	for (const key of keys) {
-		const p = pillars[`${key}柱` as const];
-		const stemEl = STEM_ELEMENT[p.天干];
-		if (stemEl) scores[stemEl] = (scores[stemEl] ?? 0) + 1.0;
-		const hidden = BRANCH_HIDDEN[p.地支] ?? [];
-		hidden.forEach((h, idx) => {
-			const el = STEM_ELEMENT[h];
-			const w = BRANCH_HIDDEN_WEIGHT[idx] ?? 0.3;
-			if (el) scores[el] = (scores[el] ?? 0) + w;
-		});
-	}
-	const total = Object.values(scores).reduce((a, b) => a + b, 0);
-	const out = {} as Record<(typeof WUXING_KEYS)[number], WuxingEntry>;
-	for (const wx of WUXING_KEYS) {
-		const v = scores[wx] ?? 0;
-		out[wx] = {
-			分值: Math.round(v * 10) / 10,
-			占比: total > 0 ? `${Math.round((v / total) * 100)}%` : "0%",
-		};
-	}
-	return { ...out, 日主五行: STEM_ELEMENT[dayMaster] ?? "" };
-}
-
 export function enrichPartialResult(
-	result: GetBaziChartResult,
+	result: GetThreePillarChartResult,
 	birth: BirthDate,
 	req: ResolvedChartRequest,
 ) {
 	const bazi = result.八字;
 	const { referenceDate, liunianRange } = req;
 
-	const partialPillars = {
-		年柱: bazi.柱位详细.年柱,
-		月柱: bazi.柱位详细.月柱,
-		日柱: bazi.柱位详细.日柱,
-	};
-
-	const tenGodStats = computeTenGodStats(partialPillars);
-	const allPillarRelations = computePillarRelations(bazi);
-	const pillarRelations = allPillarRelations.filter((r) => !r.pillars.includes("时"));
+	const tenGodStats = computeTenGodStats(bazi.柱位详细);
+	const pillarRelations = computePillarRelations(bazi, PARTIAL_PILLAR_KEYS);
 	const liunian = computeLiunian(bazi.日主, liunianRange, req.currentSexagenaryYear);
 	const decisionAids = computeDecisionAids(bazi, tenGodStats, PARTIAL_PILLAR_KEYS);
-	const wuxingScore = recomputeWuxingScore(partialPillars, bazi.日主);
 	const xunKong = deriveXunKong(bazi.柱位详细);
 
-	const birthDateIso = `${birth.year.toString().padStart(4, "0")}-${birth.month.toString().padStart(2, "0")}-${birth.day.toString().padStart(2, "0")}`;
-
-	const { 真太阳时: _omitTrueSolar, 八字: _omitBazi, 输入: _omitInput, ...restResult } = result;
-
 	return {
-		...restResult,
 		meta: {
 			referenceDateUsed: referenceDate,
 			scoringMethod: SCORING_METHOD,
 			disclaimer: DISCLAIMER,
 		},
 		输入: {
-			公历: birthDateIso,
+			公历: result.输入.公历,
 			性别: result.输入.性别,
 			时辰: null,
 		},
 		八字: {
 			...bazi,
-			公历: birthDateIso,
+			公历: result.输入.公历,
 			旬空: xunKong,
 			柱位详细: remapCorePillars(bazi.柱位详细, xunKong),
 			十神统计: tenGodStats,
@@ -133,11 +69,6 @@ export function enrichPartialResult(
 			流年: liunian,
 			流年范围: liunianRange,
 			决策辅助: decisionAids,
-			五行分值: wuxingScore,
-			命宫: null,
-			身宫: null,
-			胎元: null,
-			胎息: null,
 			大运: mapDayun(bazi.大运, { xunKong, req, birth, 起运日期: bazi.起运日期 }),
 		},
 	};
