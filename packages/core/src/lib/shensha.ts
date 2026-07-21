@@ -29,7 +29,7 @@ const SAN_HE: Record<string, number> = {
   亥: 3, 卯: 3, 未: 3, // 亥卯未
 };
 
-function sanHeGroup(zhi: string): number {
+function sanHeGroup(zhi: string): number | undefined {
   return SAN_HE[zhi];
 }
 
@@ -143,8 +143,9 @@ const WANG_SHEN = ['巳', '申', '亥', '寅'];
 const HUA_GAI = ['戌', '丑', '辰', '未'];
 const JIANG_XING = ['午', '酉', '子', '卯'];
 
-function bySanHe(zhi: string, table: string[]): string {
-  return table[sanHeGroup(zhi)];
+function bySanHe(zhi: string, table: string[]): string | undefined {
+  const group = sanHeGroup(zhi);
+  return group === undefined ? undefined : table[group];
 }
 
 // ── 查年支 → 地支 (逐支类) ───────────────────────────────────────
@@ -161,19 +162,19 @@ const HONG_LUAN: Record<string, string> = {
   申: '未', 酉: '午', 戌: '巳', 亥: '辰',
 };
 
-function piMa(yearZhi: string): string {
+function piMa(yearZhi: string): string | undefined {
   return DI_ZHI[(zhiIdx(yearZhi) + 9) % 12];
 }
 
-function sangMen(yearZhi: string): string {
+function sangMen(yearZhi: string): string | undefined {
   return DI_ZHI[(zhiIdx(yearZhi) + 2) % 12];
 }
 
-function diaoKe(yearZhi: string): string {
+function diaoKe(yearZhi: string): string | undefined {
   return DI_ZHI[(zhiIdx(yearZhi) + 10) % 12];
 }
 
-function gouJiao(yearZhi: string): string {
+function gouJiao(yearZhi: string): string | undefined {
   return DI_ZHI[(zhiIdx(yearZhi) + 3) % 12];
 }
 
@@ -198,9 +199,8 @@ const TIAN_DE: Record<string, string> = {
 
 function tianDeHe(monthZhi: string): string {
   const td = TIAN_DE[monthZhi];
-  if (td in GAN_HE) return GAN_HE[td];
-  if (td in ZHI_LIU_HE) return ZHI_LIU_HE[td];
-  return '';
+  if (td === undefined) return '';
+  return GAN_HE[td] ?? ZHI_LIU_HE[td] ?? '';
 }
 
 // ── 查日干 → 地支 (单查) ──────────────────────────────────────────
@@ -367,13 +367,15 @@ export function calcShenshaForPillars(input: ShenshaInput): ShenshaResult {
   const allGan = [yearGan, monthGan, dayGan, timeGan];
 
   const appendUnique = (idx: number, name: string) => {
-    const arr = result[pillarKeys[idx]];
+    const key = pillarKeys[idx];
+    if (key === undefined) return;
+    const arr = result[key];
     if (!arr.includes(name)) arr.push(name);
   };
 
   // ── 1. 查日干 → 看四柱地支 ────────────────────────────────────
 
-  const checkGanToZhi = (name: string, target: string) => {
+  const checkGanToZhi = (name: string, target: string | undefined) => {
     for (let i = 0; i < 4; i++) {
       if (allZhi[i] === target) appendUnique(i, name);
     }
@@ -405,7 +407,8 @@ export function calcShenshaForPillars(input: ShenshaInput): ShenshaResult {
       }
     }
     for (let i = 0; i < 4; i++) {
-      if (targets.has(allZhi[i])) appendUnique(i, name);
+      const zhi = allZhi[i];
+      if (zhi !== undefined && targets.has(zhi)) appendUnique(i, name);
     }
   };
 
@@ -491,13 +494,15 @@ export function calcShenshaForPillars(input: ShenshaInput): ShenshaResult {
   // ── 5. 查月支 → 天德/月德系列 ────────────────────────────────
 
   {
-    const yueDe = YUE_DE_GAN[sanHeGroup(monthZhi)];
+    const group = sanHeGroup(monthZhi);
+    const yueDe = group === undefined ? undefined : YUE_DE_GAN[group];
     for (let i = 0; i < 4; i++) {
       if (allGan[i] === yueDe) appendUnique(i, '月德贵人');
     }
   }
   {
-    const yueDeHe = YUE_DE_HE_GAN[sanHeGroup(monthZhi)];
+    const group = sanHeGroup(monthZhi);
+    const yueDeHe = group === undefined ? undefined : YUE_DE_HE_GAN[group];
     for (let i = 0; i < 4; i++) {
       if (allGan[i] === yueDeHe) appendUnique(i, '月德合');
     }
@@ -519,7 +524,8 @@ export function calcShenshaForPillars(input: ShenshaInput): ShenshaResult {
   {
     const targets = DE_XIU[monthZhi] ?? new Set<string>();
     for (let i = 0; i < 4; i++) {
-      if (targets.has(allGan[i])) appendUnique(i, '德秀贵人');
+      const gan = allGan[i];
+      if (gan !== undefined && targets.has(gan)) appendUnique(i, '德秀贵人');
     }
   }
 
@@ -566,10 +572,14 @@ export function calcShenshaForPillars(input: ShenshaInput): ShenshaResult {
   // 正学堂 (检查月日时, 排除年柱)
   if (yearNayin) {
     const nx = yearNayin.slice(-1);
-    if (nx in ZHENG_XUE_TANG) {
-      const target = ZHENG_XUE_TANG[nx];
+    const target = ZHENG_XUE_TANG[nx];
+    if (target !== undefined) {
       for (let i = 1; i < 4; i++) {
-        if (allGan[i] + allZhi[i] === target) appendUnique(i, '正学堂');
+        const gan = allGan[i];
+        const zhi = allZhi[i];
+        if (gan !== undefined && zhi !== undefined && gan + zhi === target) {
+          appendUnique(i, '正学堂');
+        }
       }
     }
   }

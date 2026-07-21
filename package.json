@@ -49,10 +49,10 @@
     "oracle:baseline": "bun run test/oracle/cli.ts baseline",
     "oracle:coverage": "bun run test/oracle/cli.ts coverage",
     "typecheck": "tsc --noEmit",
-    "lint": "biome lint ./src ./test",
-    "format": "biome format --write ./src ./test",
-    "check": "biome check --write ./src ./test",
-    "check:ci": "biome ci ./src ./test"
+    "lint": "biome lint ./src ./test ./packages",
+    "format": "biome format --write ./src ./test ./packages",
+    "check": "biome check --write ./src ./test ./packages",
+    "check:ci": "biome ci ./src ./test ./packages"
   },
   "dependencies": {
     "@bazi-flex/core": "workspace:*",

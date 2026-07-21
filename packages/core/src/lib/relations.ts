@@ -106,6 +106,7 @@ export function findGanRelations(
     for (let j = i + 1; j < gans.length; j++) {
       const gi = gans[i];
       const gj = gans[j];
+      if (gi === undefined || gj === undefined) continue;
       const pair = gi + gj;
 
       if (pair in GAN_HE) {
@@ -150,6 +151,7 @@ export function findZhiRelations(
     for (let j = i + 1; j < zhis.length; j++) {
       const zi = zhis[i];
       const zj = zhis[j];
+      if (zi === undefined || zj === undefined) continue;
       const pair = zi + zj;
 
       if (pair in ZHI_LIU_HE) {

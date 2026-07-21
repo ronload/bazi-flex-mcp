@@ -24,6 +24,8 @@
  * for these cities, which shifts the 时辰 (and therefore the hour pillar).
  */
 
+const DEFAULT_CITY = '默认';
+
 export const CITY_CACHE: Record<string, [number, number] | [number, number, number]> = {
   // ───────────────────────────── 🇨🇳 中国大陆 ─────────────────────────────
   北京: [39.9042, 116.4074], 上海: [31.2304, 121.4737],
@@ -178,13 +180,16 @@ export const CITY_ALIASES: Record<string, string> = {
 export function getLocation(
   city: string,
 ): [number, number] | [number, number, number] {
-  if (city in CITY_CACHE) return CITY_CACHE[city];
-  if (city in CITY_ALIASES) {
-    const canonical = CITY_ALIASES[city];
-    if (canonical in CITY_CACHE) return CITY_CACHE[canonical];
+  const direct = CITY_CACHE[city];
+  if (direct) return direct;
+  const canonical = CITY_ALIASES[city];
+  if (canonical) {
+    const viaAlias = CITY_CACHE[canonical];
+    if (viaAlias) return viaAlias;
   }
-  if (!city || city.includes('默认') || city.includes('預設') || city.includes('默認')) {
-    return CITY_CACHE['默认'];
+  const fallback = CITY_CACHE[DEFAULT_CITY];
+  if (fallback && (!city || city.includes('默认') || city.includes('預設') || city.includes('默認'))) {
+    return fallback;
   }
   throw new Error(
     `City "${city}" not in built-in cache. ` +

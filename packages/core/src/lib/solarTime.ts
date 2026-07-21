@@ -81,7 +81,8 @@ export interface SolarTimeInfo {
   clockDt: ClockDateTime;
   solarDt: ClockDateTime;
   shichenIndex: number;
-  shichenName: string;
+  /** Undefined when the shichen index is out of range, which an invalid date reaches. */
+  shichenName: string | undefined;
   correctionMinutes: number;
 }
 

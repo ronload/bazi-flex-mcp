@@ -6,23 +6,10 @@ import * as upstreamSolarTime from "../../../node_modules/shunshi-bazi-core/dist
 import { CITY_ALIASES, CITY_CACHE, getLocation } from "../src/lib/cityCache.js";
 import { findGanRelations, findZhiRelations } from "../src/lib/relations.js";
 import { calcShenshaForPillars } from "../src/lib/shensha.js";
-import { calcSolarTimeInfo, type ClockDateTime, trueSolarTime } from "../src/lib/solarTime.js";
+import { type ClockDateTime, calcSolarTimeInfo, trueSolarTime } from "../src/lib/solarTime.js";
 
 const STEMS = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"] as const;
-const BRANCHES = [
-	"子",
-	"丑",
-	"寅",
-	"卯",
-	"辰",
-	"巳",
-	"午",
-	"未",
-	"申",
-	"酉",
-	"戌",
-	"亥",
-] as const;
+const BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"] as const;
 
 const SEXAGENARY = Array.from({ length: 60 }, (_, i) => ({
 	gan: STEMS[i % 10] as string,
@@ -173,21 +160,35 @@ describe("cityCache", () => {
 		}
 	});
 
-	test("unknown cities throw on both sides", () => {
-		for (const city of ["", "  ", "Atlantis", "默认city", "預設", "默認"]) {
-			let mine: string | [number, number] | [number, number, number];
-			let theirs: string | [number, number] | [number, number, number];
-			try {
-				mine = getLocation(city);
-			} catch (e) {
-				mine = `threw: ${(e as Error).message}`;
-			}
-			try {
-				theirs = upstreamCityCache.getLocation(city);
-			} catch (e) {
-				theirs = `threw: ${(e as Error).message}`;
-			}
-			expectSame(mine, theirs, city);
+	// The lookup switched from `in` to a direct read, so prototype-chain keys are
+	// the one place the two could diverge.
+	test("unknown cities, including prototype keys, behave identically", () => {
+		for (const city of [
+			"",
+			"  ",
+			"Atlantis",
+			"默认city",
+			"預設",
+			"默認",
+			"toString",
+			"constructor",
+			"hasOwnProperty",
+			"__proto__",
+			"valueOf",
+		]) {
+			// String, not JSON: a prototype key resolves to a function, which
+			// JSON.stringify erases to undefined on both sides regardless.
+			const probe = (lookup: (c: string) => unknown) => {
+				try {
+					const value = lookup(city);
+					return `${typeof value}:${String(value)}`;
+				} catch (e) {
+					return `threw: ${(e as Error).message}`;
+				}
+			};
+			expect(`${city}: ${probe(getLocation)}`).toBe(
+				`${city}: ${probe(upstreamCityCache.getLocation)}`,
+			);
 		}
 	});
 });
