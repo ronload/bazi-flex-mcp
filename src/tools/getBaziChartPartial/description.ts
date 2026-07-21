@@ -2,7 +2,7 @@ export const toolDescriptionLines: readonly string[] = [
 	"Compute a partial Bazi chart when the birth hour is unknown. Requires year/month/day/gender. Use this when the caller knows only the birth date.",
 	"",
 	"How it works:",
-	"- Internally calls upstream `shunshi-bazi-core` with a placeholder hour of 12:00 (noon) — chosen to stay far from the 23:00 子时 day-pillar boundary so the year/month/day pillars are stable.",
+	"- Internally calls upstream `@bazi-flex/core` with a placeholder hour of 12:00 (noon) — chosen to stay far from the 23:00 子时 day-pillar boundary so the year/month/day pillars are stable.",
 	"- All time-pillar fields and time-dependent derivations are then either stripped, set to `null`, or recomputed without the time pillar. See `meta.disclaimer` in the response for the per-field treatment.",
 	"",
 	"Output differences vs `getBaziChart`:",

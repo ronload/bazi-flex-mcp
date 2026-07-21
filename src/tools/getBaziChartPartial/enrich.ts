@@ -22,7 +22,7 @@ const SCORING_METHOD = {
 	},
 	notes:
 		"Same weighting as the full-time chart, but summed over only 3 pillars (年/月/日) — time-pillar contributions are excluded because the birth hour is unknown. Treat values as relative presence, not classical 旺衰 strength.",
-	upstream: "shunshi-bazi-core (post-processed: time pillar removed)",
+	upstream: "@bazi-flex/core (post-processed: time pillar removed)",
 } as const;
 
 const DISCLAIMER = {

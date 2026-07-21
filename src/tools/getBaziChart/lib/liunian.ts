@@ -1,4 +1,4 @@
-// shunshi-bazi-core has no 流年 API as of 0.2.0, so this table is built here.
+// The calculation core has no 流年 API, so this table is built here.
 
 import { BRANCH_HIDDEN } from "../../../ganzhi/data.js";
 import { sexagenaryOfYear, tenStar } from "../../../ganzhi/index.js";
