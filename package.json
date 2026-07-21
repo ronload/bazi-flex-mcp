@@ -1,7 +1,7 @@
 {
   "name": "bazi-flex-mcp",
   "version": "0.0.1",
-  "description": "Flexible Bazi (八字) MCP server — computes charts with or without birth hour. Built on shunshi-bazi-core.",
+  "description": "Flexible Bazi (八字) MCP server — computes charts with or without birth hour.",
   "type": "module",
   "license": "MIT",
   "workspaces": [
@@ -59,7 +59,6 @@
     "@hono/mcp": "^0.3.1",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "hono": "^4.12.31",
-    "shunshi-bazi-core": "^0.2.0",
     "tyme4ts": "1.4.6",
     "zod": "^4.0.0"
   },

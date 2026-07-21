@@ -1,5 +1,5 @@
 import { setSystemTime } from "bun:test";
-import { getBaziChart } from "shunshi-bazi-core";
+import { getBaziChart } from "@bazi-flex/core";
 import { enrichResult } from "../../src/tools/getBaziChart/enrich.js";
 import { enrichPartialResult } from "../../src/tools/getBaziChartPartial/enrich.js";
 import { resolveChartRequest } from "../../src/tools/shared/request.js";
@@ -7,7 +7,7 @@ import { canonicalize } from "./canonical.js";
 import type { CoreInput, OracleCase } from "./corpus.js";
 
 /**
- * Upstream `buildDayun` reads `new Date().getFullYear()` for `大运[].当前` with no
+ * `buildDayun` reads `new Date().getFullYear()` for `大运[].当前` with no
  * injection point, so every surface is clock-dependent. Without a freeze the
  * baseline rots at every new year, and a run straddling Dec 31 midnight gives two
  * answers for one input.
@@ -67,7 +67,7 @@ export const SURFACES: readonly Surface[] = [
 	{
 		name: "core",
 		description:
-			"shunshi-bazi-core getBaziChart(), full input space including sect / standardMeridian",
+			"@bazi-flex/core getBaziChart(), full input space including sect / standardMeridian",
 		project: (c) => c.core,
 		run: (c) => getBaziChart(c.core),
 	},
@@ -162,8 +162,8 @@ function fingerprintCase(surface: Surface, c: OracleCase): string {
 			.digest("hex")
 			.slice(0, 16);
 	} catch (err) {
-		// A throw is stable observable behaviour and part of the contract: upstream
-		// throws on some out-of-domain calendar inputs, and a rewrite that stops
+		// A throw is stable observable behaviour and part of the contract: the
+		// calendar throws on some out-of-domain inputs, and a rewrite that stops
 		// throwing, or starts throwing elsewhere, is a change.
 		const message = err instanceof Error ? err.message : String(err);
 		return new Bun.CryptoHasher("sha256").update(`THROW:${message}`).digest("hex").slice(0, 16);

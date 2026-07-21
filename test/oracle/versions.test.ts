@@ -1,8 +1,9 @@
 /**
- * Guards a real failure: `bun.lock` recorded shunshi-bazi-core@0.2.0 while
- * node_modules held 0.1.0, so local and CI ran different versions for months.
- * `--frozen-lockfile` cannot catch that, since it only asserts the lockfile is
- * unmodified by the install. These assertions read the installed artefact.
+ * Guards a real failure: a lockfile once recorded a version the installed
+ * node_modules did not hold, so local and CI ran different calendar tables for
+ * months. `--frozen-lockfile` cannot catch that, since it only asserts the
+ * lockfile is unmodified by the install. These assertions read the installed
+ * artefact.
  *
  * Exact string equality rather than semver satisfaction, because drift that
  * satisfies a range is exactly what this is defending against.
@@ -48,8 +49,8 @@ describe("installed dependency versions", () => {
 	}
 
 	test("tyme4ts is pinned without a range operator", async () => {
-		// shunshi-bazi-core declares ^1.3.4, so a caret here would let 1.5.x arrive
-		// silently and move every 節氣 boundary under src/.
+		// This is now the only declaration of tyme4ts in the tree, so a caret here
+		// would let 1.5.x arrive silently and move every 節氣 boundary under src/.
 		const root = (await Bun.file(join(REPO_ROOT, "package.json")).json()) as {
 			dependencies: Record<string, string>;
 		};

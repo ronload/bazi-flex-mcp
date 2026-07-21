@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { getBaziChart } from "shunshi-bazi-core";
+import { getBaziChart } from "@bazi-flex/core";
 import { computeTenGodStats } from "./getBaziChart/index.js";
 import { enrichPartialResult } from "./getBaziChartPartial/index.js";
 import { resolveChartRequest } from "./shared/request.js";

@@ -2,11 +2,12 @@
 
 "Oracle" is the testing term (test oracle): the source of truth a run is judged
 against. Here that source is the current code's actual behaviour on top of
-`shunshi-bazi-core@0.2.0` and `tyme4ts@1.4.6`. Nothing to do with Oracle
+`tyme4ts@1.4.6`. Nothing to do with Oracle
 Corporation; it is fully offline and touches no network service.
 
-It exists because the next stages vendor core into this repo and then reshape the
-output. "Did that break anything" cannot be answered by eyeballing a few charts.
+It exists because the calculation was vendored into this repo and the later
+stages reshape the output. "Did that break anything" cannot be answered by
+eyeballing a few charts.
 It needs something that answers "byte-identical" or "these 41 cases moved" across
 thousands of inputs.
 
@@ -32,7 +33,7 @@ generated payloads out of version control.
 | File | Responsibility |
 | --- | --- |
 | `corpus.ts` | The corpus: six layers, deterministic, gated by `CORPUS_VERSION` |
-| `cities.ts` | Frozen snapshot of the upstream city tables |
+| `cities.ts` | Frozen snapshot of the city tables |
 | `prng.ts` | mulberry32. `Math.random()` is banned in this directory |
 | `surfaces.ts` | The three surfaces plus the clock freeze |
 | `canonical.ts` | Canonical serialisation, fingerprints, deep diff |
@@ -42,9 +43,11 @@ generated payloads out of version control.
 
 ## The three surfaces
 
-- **`core`**: upstream `getBaziChart()`, including `sect` / `useTrueSolarTime` /
-  `standardMeridian` which the MCP schema does not expose. This is the contract
-  vendoring must satisfy byte for byte on day one.
+- **`core`**: `@bazi-flex/core` `getBaziChart()`, including `sect` /
+  `useTrueSolarTime` / `standardMeridian` which the MCP schema does not expose.
+  This baseline was captured against the published package before vendoring, so
+  an unmoved `core` aggregate is a standing proof that the in-repo calculation
+  still agrees with it.
 - **`toolFull`**: the full `getBaziChart` MCP payload.
 - **`toolPartial`**: the `getBaziChartPartial` payload.
 
@@ -67,7 +70,7 @@ are small and their triggers are sparse: some 神煞 fire on 3 of the 60 day
 pillars, which random sampling over a 200-year span would almost never reach.
 
 Measured coverage: 60/60 日柱, 60/60 年柱, 12/12 月支, 12/12 时支, 5/5 纳音五行,
-both sects, 151 city strings, and all 50 神煞 names in upstream `shensha.js`.
+both sects, 151 city strings, and all 50 神煞 names in `shensha.ts`.
 
 ## When the baseline may be rebuilt
 
@@ -82,8 +85,8 @@ and the baseline stops being worth anything.
 
 ## Clock freeze
 
-Upstream `buildDayun` computes `大运[].当前` from `new Date().getFullYear()` with
-no injection point, so the harness freezes the system clock at
+`buildDayun` computes `大运[].当前` from `new Date().getFullYear()` with no
+injection point, so the harness freezes the system clock at
 `2026-06-15T12:00:00Z`. Without it the baseline rots silently every January 1,
 and a run straddling midnight gives two answers for one input.
 
@@ -92,8 +95,8 @@ developers outside UTC+8 reproduce the same results.
 
 ## What the oracle cannot do
 
-Full-corpus parity proves agreement with upstream's conventions. It can never
-prove correctness as 命理. No test resolves that.
+Full-corpus parity proves agreement with the conventions the calculation was
+inherited with. It can never prove correctness as 命理. No test resolves that.
 
 More to the point, the main value of this refactor (native three-pillar charts,
 三合/三会/三刑, pillar-labelled relations, decision aids, the 立春 year boundary)

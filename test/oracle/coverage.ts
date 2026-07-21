@@ -5,7 +5,7 @@
  * so a count of random samples says nothing about whether they are covered.
  */
 
-import { getBaziChart } from "shunshi-bazi-core";
+import { getBaziChart } from "@bazi-flex/core";
 import { buildCorpus, type OracleCase } from "./corpus.js";
 
 export interface Coverage {

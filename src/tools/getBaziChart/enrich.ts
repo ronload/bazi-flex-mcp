@@ -21,7 +21,7 @@ const SCORING_METHOD = {
 	},
 	notes:
 		"Score = sum of heavenly-stem weights (1.0 per stem, four pillars) + sum of earth-branch hidden-stem weights by position (本气/中气/余气 = 1.0 / 0.5 / 0.3). No month-command bonus; no transparent-stem bonus. Treat values as relative presence, not classical 旺衰 strength.",
-	upstream: "shunshi-bazi-core",
+	upstream: "@bazi-flex/core",
 } as const;
 
 export function enrichResult(
