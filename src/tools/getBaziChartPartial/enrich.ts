@@ -1,11 +1,15 @@
-import { BRANCH_HIDDEN, type PillarKey, STEM_ELEMENT } from "../../ganzhi/data.js";
-import { actualAgeAt } from "../../time/age.js";
-import { parseIsoLikeDate } from "../../time/iso.js";
+import {
+	BRANCH_HIDDEN,
+	BRANCH_HIDDEN_WEIGHT,
+	type PillarKey,
+	STEM_ELEMENT,
+} from "../../ganzhi/data.js";
 import { computeDecisionAids } from "../getBaziChart/lib/decisionAids.js";
 import { computeLiunian } from "../getBaziChart/lib/liunian.js";
 import { computePillarRelations } from "../getBaziChart/lib/relations.js";
 import { computeTenGodStats } from "../getBaziChart/lib/tenGodStats.js";
 import type { GetBaziChartResult } from "../getBaziChart/types.js";
+import { type BirthDate, deriveXunKong, mapDayun, remapCorePillars } from "../shared/pillars.js";
 import type { ResolvedChartRequest } from "../shared/request.js";
 
 const PARTIAL_PILLAR_KEYS: readonly PillarKey[] = ["年", "月", "日"] as const;
@@ -41,7 +45,6 @@ const DISCLAIMER = {
 } as const;
 
 const WUXING_KEYS = ["金", "木", "水", "火", "土"] as const;
-const CANG_WEIGHT = [1.0, 0.5, 0.3] as const;
 
 interface WuxingEntry {
 	分值: number;
@@ -66,7 +69,7 @@ function recomputeWuxingScore(
 		const hidden = BRANCH_HIDDEN[p.地支] ?? [];
 		hidden.forEach((h, idx) => {
 			const el = STEM_ELEMENT[h];
-			const w = CANG_WEIGHT[idx] ?? 0.3;
+			const w = BRANCH_HIDDEN_WEIGHT[idx] ?? 0.3;
 			if (el) scores[el] = (scores[el] ?? 0) + w;
 		});
 	}
@@ -82,30 +85,13 @@ function recomputeWuxingScore(
 	return { ...out, 日主五行: STEM_ELEMENT[dayMaster] ?? "" };
 }
 
-function remapPillarKongWang<P extends { 地支: string; 空亡: string }>(
-	pillar: P,
-	dayKongSet: ReadonlySet<string>,
-	yearKongSet: ReadonlySet<string>,
-): Omit<P, "空亡"> & { 所在旬空亡: string[]; 落空亡: { 日柱旬: boolean; 年柱旬: boolean } } {
-	const { 空亡, ...rest } = pillar;
-	return {
-		...rest,
-		所在旬空亡: [...空亡],
-		落空亡: {
-			日柱旬: dayKongSet.has(pillar.地支),
-			年柱旬: yearKongSet.has(pillar.地支),
-		},
-	};
-}
-
 export function enrichPartialResult(
 	result: GetBaziChartResult,
-	birth: { year: number; month: number; day: number },
+	birth: BirthDate,
 	req: ResolvedChartRequest,
 ) {
 	const bazi = result.八字;
-	const { referenceDate, referenceYear: refYear, liunianRange: effectiveLiunianRange } = req;
-	const startMd = parseIsoLikeDate(bazi.起运日期);
+	const { referenceDate, liunianRange } = req;
 
 	const partialPillars = {
 		年柱: bazi.柱位详细.年柱,
@@ -116,14 +102,10 @@ export function enrichPartialResult(
 	const tenGodStats = computeTenGodStats(partialPillars);
 	const allPillarRelations = computePillarRelations(bazi);
 	const pillarRelations = allPillarRelations.filter((r) => !r.pillars.includes("时"));
-	const liunian = computeLiunian(bazi.日主, effectiveLiunianRange, req.currentSexagenaryYear);
+	const liunian = computeLiunian(bazi.日主, liunianRange, req.currentSexagenaryYear);
 	const decisionAids = computeDecisionAids(bazi, tenGodStats, PARTIAL_PILLAR_KEYS);
 	const wuxingScore = recomputeWuxingScore(partialPillars, bazi.日主);
-
-	const dayKong = [...bazi.柱位详细.日柱.空亡];
-	const yearKong = [...bazi.柱位详细.年柱.空亡];
-	const dayKongSet = new Set(dayKong);
-	const yearKongSet = new Set(yearKong);
+	const xunKong = deriveXunKong(bazi.柱位详细);
 
 	const birthDateIso = `${birth.year.toString().padStart(4, "0")}-${birth.month.toString().padStart(2, "0")}-${birth.day.toString().padStart(2, "0")}`;
 
@@ -144,46 +126,19 @@ export function enrichPartialResult(
 		八字: {
 			...bazi,
 			公历: birthDateIso,
-			旬空: { 日柱旬空: dayKong, 年柱旬空: yearKong },
-			柱位详细: {
-				年柱: remapPillarKongWang(bazi.柱位详细.年柱, dayKongSet, yearKongSet),
-				月柱: remapPillarKongWang(bazi.柱位详细.月柱, dayKongSet, yearKongSet),
-				日柱: {
-					...remapPillarKongWang(bazi.柱位详细.日柱, dayKongSet, yearKongSet),
-					主星: null,
-					label: "日主",
-					isDayMaster: true,
-				},
-			},
+			旬空: xunKong,
+			柱位详细: remapCorePillars(bazi.柱位详细, xunKong),
 			十神统计: tenGodStats,
 			柱间关系: pillarRelations,
 			流年: liunian,
-			流年范围: effectiveLiunianRange,
+			流年范围: liunianRange,
 			决策辅助: decisionAids,
 			五行分值: wuxingScore,
 			命宫: null,
 			身宫: null,
 			胎元: null,
 			胎息: null,
-			大运: bazi.大运.map((yun) => {
-				const remapped = remapPillarKongWang(yun, dayKongSet, yearKongSet);
-				return {
-					...remapped,
-					日主关系: remapped.日主关系 === "" ? null : remapped.日主关系,
-					当前: refYear >= remapped.起始年份 && refYear <= remapped.结束年份,
-					起始虚岁: remapped.起始年龄,
-					起始实岁: startMd
-						? actualAgeAt(
-								birth.year,
-								birth.month,
-								birth.day,
-								remapped.起始年份,
-								startMd.month,
-								startMd.day,
-							)
-						: remapped.起始年龄 - 1,
-				};
-			}),
+			大运: mapDayun(bazi.大运, { xunKong, req, birth, 起运日期: bazi.起运日期 }),
 		},
 	};
 }
