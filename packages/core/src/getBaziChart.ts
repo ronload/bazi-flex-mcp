@@ -1,5 +1,6 @@
 import { type BaziChart, buildBaziChart } from "./calendar/chart.js";
 import type { Sect } from "./calendar/sect.js";
+import { formatMinutePrecision } from "./lib/datetime.js";
 import { type ClockDateTime, calcSolarTimeInfo, type SolarTimeInfo } from "./lib/solarTime.js";
 
 export interface GetBaziChartInput {
@@ -48,14 +49,6 @@ export interface GetBaziChartOutput {
 }
 
 const COORDINATE_DECIMALS = 4;
-
-function pad2(value: number): string {
-	return value.toString().padStart(2, "0");
-}
-
-function formatMinutePrecision(dt: ClockDateTime): string {
-	return `${dt.year}-${pad2(dt.month)}-${pad2(dt.day)} ${pad2(dt.hour)}:${pad2(dt.minute)}`;
-}
 
 function roundCoordinate(value: number): number {
 	const factor = 10 ** COORDINATE_DECIMALS;
