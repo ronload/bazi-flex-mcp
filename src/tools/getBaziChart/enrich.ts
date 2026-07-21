@@ -1,5 +1,6 @@
 import { actualAgeAt } from "../../time/age.js";
 import { chineseDateTimeToIso, fmtDtToIso, parseIsoLikeDate } from "../../time/iso.js";
+import type { ResolvedChartRequest } from "../shared/request.js";
 import { computeDecisionAids } from "./lib/decisionAids.js";
 import { computeLiunian } from "./lib/liunian.js";
 import { computePillarRelations } from "./lib/relations.js";
@@ -44,16 +45,14 @@ function remapPillarKongWang<P extends { 地支: string; 空亡: string }>(
 export function enrichResult(
 	result: GetBaziChartResult,
 	birth: { year: number; month: number; day: number },
-	referenceDate: string,
-	liunianRange?: { start: number; end: number },
+	req: ResolvedChartRequest,
 ) {
 	const bazi = result.八字;
-	const refYear = Number(referenceDate.slice(0, 4));
+	const { referenceDate, referenceYear: refYear, liunianRange: effectiveLiunianRange } = req;
 	const startMd = parseIsoLikeDate(bazi.起运日期);
 	const tenGodStats = computeTenGodStats(bazi.柱位详细);
 	const pillarRelations = computePillarRelations(bazi);
-	const effectiveLiunianRange = liunianRange ?? { start: refYear - 3, end: refYear + 3 };
-	const liunian = computeLiunian(bazi.日主, effectiveLiunianRange, refYear);
+	const liunian = computeLiunian(bazi.日主, effectiveLiunianRange, req.referenceYear);
 	const decisionAids = computeDecisionAids(bazi, tenGodStats);
 	const solarIso = chineseDateTimeToIso(bazi.公历);
 
