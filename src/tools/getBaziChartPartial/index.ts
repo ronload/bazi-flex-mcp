@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getBaziChart } from "shunshi-bazi-core";
-import { resolveChartRequest } from "../shared/request.js";
+import { jsonToolResult, splitChartInput } from "../shared/handler.js";
 import { toolDescriptionLines } from "./description.js";
 import { enrichPartialResult } from "./enrich.js";
 import { inputShape } from "./schema.js";
@@ -21,30 +21,13 @@ export function registerGetBaziChartPartial(server: McpServer): void {
 			inputSchema: inputShape,
 		},
 		async (input) => {
-			const { referenceDate, liunianStart, liunianEnd, ...dateInput } = input;
+			const { coreInput, birth, req } = splitChartInput(input);
 			const result = getBaziChart({
-				...dateInput,
+				...coreInput,
 				hour: PLACEHOLDER_HOUR,
 				minute: PLACEHOLDER_MINUTE,
 			});
-			const req = resolveChartRequest({ referenceDate, liunianStart, liunianEnd });
-			const enriched = enrichPartialResult(
-				result,
-				{
-					year: input.year,
-					month: input.month,
-					day: input.day,
-				},
-				req,
-			);
-			return {
-				content: [
-					{
-						type: "text",
-						text: JSON.stringify(enriched, null, 2),
-					},
-				],
-			};
+			return jsonToolResult(enrichPartialResult(result, birth, req));
 		},
 	);
 }
