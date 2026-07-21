@@ -1,3 +1,14 @@
+export { type BaziChart, type BaziChartInput, buildBaziChart } from "./calendar/chart.js";
+export { buildDayun, type Dayun, type DayunEntry } from "./calendar/dayun.js";
+export type { HiddenStem, Pillar } from "./calendar/pillar.js";
+export { DEFAULT_SECT, type Sect } from "./calendar/sect.js";
+export { calcWuxingScore, type ElementScore, type WuxingScore } from "./calendar/wuxing.js";
+export {
+	type GetBaziChartInput,
+	type GetBaziChartOutput,
+	getBaziChart,
+	type TrueSolarTime,
+} from "./getBaziChart.js";
 export { CITY_ALIASES, CITY_CACHE, getLocation } from "./lib/cityCache.js";
 export { findGanRelations, findZhiRelations } from "./lib/relations.js";
 export {
@@ -6,8 +17,8 @@ export {
 	type ShenshaResult,
 } from "./lib/shensha.js";
 export {
-	calcSolarTimeInfo,
 	type ClockDateTime,
+	calcSolarTimeInfo,
 	equationOfTime,
 	hourToShichenIndex,
 	SHICHEN_NAMES,

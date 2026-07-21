@@ -7,7 +7,7 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["**", "!packages/core/src/**"]
+		"includes": ["**", "!packages/core/src/lib/**"]
 	},
 	"formatter": {
 		"enabled": true,

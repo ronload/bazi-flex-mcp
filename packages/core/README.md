@@ -3,6 +3,14 @@
 Bazi calculation owned by this repository, so the MCP layer stops depending on
 a package whose exports map closes off the internals it needs.
 
+## Layout
+
+`src/lib/` is vendored upstream code and is exempt from this repository's
+Biome config, so it can stay diffable against its origin. Everything else is
+written here: `src/calendar/` replaces upstream `lib/bazi.ts`, which was only a
+carrier for `tyme4ts` calls, and `src/getBaziChart.ts` replaces the upstream
+entry point minus its 黄历 half.
+
 ## Provenance
 
 `src/lib/` is vendored from
@@ -27,9 +35,25 @@ matches the one in the upstream repository, at both the repository root and
 this package's directory. That is what makes vendoring the TypeScript sources
 rather than the compiled `dist` legitimate.
 
-## Editing vendored code
+## Parity harnesses
 
-`test/vendorParity.test.ts` compares every vendored module against the
-compiled upstream artifact, reached by file path because the upstream exports
-map only opens `.`. Any edit that changes behaviour fails there. Keep it that
-way until this package stops tracking upstream.
+`test/vendorParity.test.ts` compares every vendored module against the compiled
+upstream artifact, reached by file path because the upstream exports map only
+opens `.`. That is what licenses editing vendored code: an edit that changes
+behaviour fails there.
+
+`test/chartParity.test.ts` does the same job one level up, comparing
+`getBaziChart` against the published package over a sweep of dates, hours,
+locations, genders and both sects. It compares `JSON.stringify` output, so key
+order counts too. That is what licenses `src/calendar/` being a rewrite rather
+than a copy.
+
+Keep both until this package stops tracking upstream.
+
+## 子时分日法
+
+`tyme4ts` resolves the eight char through `LunarHour.provider`, a static field,
+and `ChildLimit` re-derives its own eight char internally, so 起运 direction
+follows that field too. A per-call provider argument therefore cannot express
+`sect` on its own. `src/calendar/sect.ts` is the single place that assigns it,
+unconditionally, so no call inherits the previous call's sect.
