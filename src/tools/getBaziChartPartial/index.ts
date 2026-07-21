@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { getBaziChart } from "shunshi-bazi-core";
+import { getBaziChart } from "@bazi-flex/core";
 import { jsonToolResult, splitChartInput } from "../shared/handler.js";
 import { toolDescriptionLines } from "./description.js";
 import { enrichPartialResult } from "./enrich.js";

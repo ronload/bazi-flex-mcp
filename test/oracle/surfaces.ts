@@ -1,5 +1,5 @@
 import { setSystemTime } from "bun:test";
-import { getBaziChart } from "shunshi-bazi-core";
+import { getBaziChart } from "@bazi-flex/core";
 import { enrichResult } from "../../src/tools/getBaziChart/enrich.js";
 import { enrichPartialResult } from "../../src/tools/getBaziChartPartial/enrich.js";
 import { resolveChartRequest } from "../../src/tools/shared/request.js";
@@ -66,8 +66,7 @@ export type SurfaceName = "core" | "toolFull" | "toolPartial";
 export const SURFACES: readonly Surface[] = [
 	{
 		name: "core",
-		description:
-			"shunshi-bazi-core getBaziChart(), full input space including sect / standardMeridian",
+		description: "@bazi-flex/core getBaziChart(), full input space including sect / standardMeridian",
 		project: (c) => c.core,
 		run: (c) => getBaziChart(c.core),
 	},
