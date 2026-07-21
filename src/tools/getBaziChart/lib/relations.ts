@@ -1,11 +1,11 @@
-// ─── 柱间关系 (pair 化) ───────────────────────────────────────────────
-// 上游 `shunshi-bazi-core` v0.1 的 `刑冲合会` 只是扁平字串 (例 "甲己相合")，
-// 沒有柱位標籤 — 複雜盤 (多柱同干支) 會有 pair 歧義。這裡反推 pair，只做
-// 解析與配對，不重新實作 relation 規則，沿用上游的判斷結果。
+// Upstream emits 刑冲合会 as flat strings like "甲己相合" with no pillar labels,
+// so the pairs are recovered here by matching characters back against the four
+// pillars. When two pillars share a stem or branch the recovery is genuinely
+// ambiguous and every candidate pair is emitted.
 //
-// TODO(upstream): shunshi-bazi-core v0.2+ 的 roadmap 可能暴露帶 `labels`
-// 的 relation API，或直接在 output 帶 pair。屆時移除本段、改用 upstream
-// 的 pair 輸出。參考：node_modules/shunshi-bazi-core/README.md 動態神煞段。
+// The information is not lost upstream: `findGanRelations(gans, short, labels)`
+// takes pillar labels, but it sits behind an exports map that only opens ".".
+// This layer therefore lives until the vendoring stage replaces it.
 
 import { PILLAR_KEYS, type PillarKey } from "../../../ganzhi/data.js";
 import type { Pillars } from "../types.js";
@@ -35,10 +35,9 @@ interface ParsedRelation {
 }
 
 function parseRelationString(raw: string): ParsedRelation | null {
-	// 克:X克Y (only 天干 uses this form in upstream)
+	// Only 天干 uses the bare X克Y form upstream.
 	const keMatch = /^(.)克(.)$/.exec(raw);
 	if (keMatch) return { type: "克", involved: [keMatch[1] ?? "", keMatch[2] ?? ""] };
-	// 三刑:XYZ三刑
 	const sanxingMatch = /^(.)(.)(.)三刑$/.exec(raw);
 	if (sanxingMatch) {
 		return {
@@ -46,7 +45,6 @@ function parseRelationString(raw: string): ParsedRelation | null {
 			involved: [sanxingMatch[1] ?? "", sanxingMatch[2] ?? "", sanxingMatch[3] ?? ""],
 		};
 	}
-	// 兩字 + 二字尾詞
 	const pairMatch = /^(.)(.)(相合|相冲|相害|相破|暗合|自刑)$/.exec(raw);
 	if (pairMatch) {
 		return {
