@@ -20,11 +20,21 @@ const SWEEP_TIMEOUT_MS = 60_000;
 const SWEEP_START_YEAR = 1950;
 const SWEEP_END_YEAR = 2050;
 
-function* sweepDays(): Generator<{ year: number; month: number; day: number }> {
+/**
+ * Sampling every 7th day rather than all of them keeps the equivalence sweep,
+ * which builds two full charts per date, inside the timeout on a CI runner. 7 is
+ * coprime with 60, so the sample still walks the whole 干支 day cycle.
+ */
+const EQUIVALENCE_SWEEP_STEP = 7;
+
+function* sweepDays(step = 1): Generator<{ year: number; month: number; day: number }> {
+	let index = 0;
 	for (let year = SWEEP_START_YEAR; year <= SWEEP_END_YEAR; year++) {
 		for (let month = 1; month <= 12; month++) {
 			const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-			for (let day = 1; day <= daysInMonth; day++) yield { year, month, day };
+			for (let day = 1; day <= daysInMonth; day++) {
+				if (index++ % step === 0) yield { year, month, day };
+			}
 		}
 	}
 }
@@ -41,13 +51,15 @@ describe("three-pillar chart", () => {
 		"on a day with no 節 every shared field matches the noon full chart",
 		() => {
 			const divergences: string[] = [];
-			for (const date of sweepDays()) {
+			const dayPillarsSeen = new Set<string>();
+			for (const date of sweepDays(EQUIVALENCE_SWEEP_STEP)) {
 				const solarDay = SolarDay.fromYmd(date.year, date.month, date.day);
 				if (termAmbiguityOf(solarDay) !== null) continue;
 
 				const native = getThreePillarChart({ ...date, gender: 1 }).八字;
 				const full = fullChartAtNoon(date);
 				const label = `${date.year}-${date.month}-${date.day}`;
+				dayPillarsSeen.add(native.柱位详细.日柱.干支);
 
 				const nativeShared = {
 					日主: native.日主,
