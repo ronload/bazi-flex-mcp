@@ -1,5 +1,5 @@
 import { setSystemTime } from "bun:test";
-import { getBaziChart } from "@bazi-flex/core";
+import { getBaziChart, getThreePillarChart } from "@bazi-flex/core";
 import { enrichResult } from "../../src/tools/getBaziChart/enrich.js";
 import { enrichPartialResult } from "../../src/tools/getBaziChartPartial/enrich.js";
 import { resolveChartRequest } from "../../src/tools/shared/request.js";
@@ -91,7 +91,7 @@ export const SURFACES: readonly Surface[] = [
 	},
 	{
 		name: "toolPartial",
-		description: "getBaziChartPartial MCP tool payload (hour/minute ignored, 12:00 placeholder)",
+		description: "getBaziChartPartial MCP tool payload (native three-pillar chart, no hour)",
 		project: (c) => ({
 			year: c.core.year,
 			month: c.core.month,
@@ -102,12 +102,10 @@ export const SURFACES: readonly Surface[] = [
 			liunianEnd: c.liunianEnd,
 		}),
 		run: (c) => {
-			const raw = getBaziChart({
+			const raw = getThreePillarChart({
 				year: c.core.year,
 				month: c.core.month,
 				day: c.core.day,
-				hour: 12,
-				minute: 0,
 				gender: c.core.gender,
 			});
 			return enrichPartialResult(

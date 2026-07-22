@@ -157,24 +157,39 @@ For callers who know only the birth date (year/month/day) but not the hour. Retu
 
 ### How it works
 
-Internally calls the calculation core with a placeholder hour of `12:00` (noon) — chosen to stay far from the `23:00` 子时 day-pillar boundary so the year/month/day pillars are stable. Then the wrapper post-processes the result:
+The chart is built natively from three pillars. No placeholder hour is invented, so nothing in the response is derived from a time that was never supplied.
 
-- `时柱` is **removed entirely** from `八字.柱位详细` (not just nulled — the key is absent).
-- `命宫`, `身宫`, `胎元`, `胎息` are set to `null` (these formulas require the birth hour).
-- `真太阳时` is **omitted** from the response (true-solar-time correction is meaningless without a real hour).
-- `输入.公历` and `八字.公历` are date-only `YYYY-MM-DD`; `输入.时辰` is `null`.
-- `八字.十神统计` is recomputed without time-pillar contributions (`透` only sums 年/月柱; `藏` only sums 年/月/日柱).
-- `八字.柱间关系` is filtered to drop any pair/triple involving the time pillar.
-- `八字.刑冲合会` (the upstream raw flat list) is **kept as-is** for compatibility but may still mention placeholder-time-pillar relations — prefer the filtered `八字.柱间关系`.
-- `八字.决策辅助.日主根气` is recomputed using only 3 pillars; `透藏平衡` reflects the new `十神统计`; `日主得令` is unchanged (depends on month pillar only).
-- `八字.五行分值` is recomputed: time-pillar 天干 (1.0) and time-pillar 藏干 (1.0/0.5/0.3) contributions are removed; `占比` is renormalised over the 3-pillar total.
-- `八字.大运` is **kept** — the decade-cycle direction (顺/逆) depends only on year-pillar polarity + gender, both unaffected by hour. **However**, the precise 起运 string and 起运日期 are calculated from the distance between birth time and the next/previous solar term, so they may carry **±1 day to ±1-2 month error** when the hour is unknown — and the resulting 起始年份/结束年份 may shift by ±1 year. Treat decade boundaries as approximate windows. See `meta.disclaimer.大运起运精度`.
-- `八字.流年` is unchanged — derivation depends only on the day-master stem and Gregorian year.
-- `八字.旬空` and per-pillar `所在旬空亡` / `落空亡` are unchanged in semantics — at noon the day pillar matches what it would be without solar-time correction, so 旬空 reference branches are stable.
+- `八字.三柱` replaces `八字.四柱` and holds exactly three 干支.
+- `时柱` is **absent** from `八字.柱位详细` (not nulled: the key does not exist).
+- `命宫`, `身宫`, `胎元`, `胎息` are `null` (these formulas require the birth hour).
+- `真太阳时` is **omitted** from the response; the correction only ever moves the hour pillar.
+- `输入.公历` and `八字.公历` are date-only `YYYY-MM-DD`; `输入.时辰` is `null`; `八字.农历` carries no 时辰 suffix.
+- `八字.十神统计`, `八字.五行分值`, `八字.刑冲合会`, `八字.柱间关系` and `八字.决策辅助.日主根气` all cover 年/月/日 only. `占比` in `八字.五行分值` is normalised over the 3-pillar total.
+- `八字.大运` is **kept**: the decade-cycle direction (顺/逆) depends only on year-pillar polarity + gender, both unaffected by hour. **However**, 起运 and 起运日期 are measured from the birth moment to the neighbouring solar term, and the reference moment here is the midpoint of the day's month-command window, so they may carry **±1 day to ±1-2 month error**, and the resulting 起始年份/结束年份 may shift by ±1 year. Treat decade boundaries as approximate windows. See `meta.disclaimer.大运起运精度`.
+- `八字.流年` is unchanged: derivation depends only on the day-master stem and the 干支年.
+- `八字.旬空` and per-pillar `所在旬空亡` / `落空亡` are unchanged in semantics; the day pillar depends on the hour only across the `23:00` 子时 switch, which no date-only input can reach.
+
+### 节气歧义
+
+年柱 and 月柱 use day-granular attribution: the whole calendar day on which a 節 falls belongs to the new month, and 立春 day to the new 干支年. That is a convention, not a fact, and on the ~1.6% of dates that carry a 節 the true answer depends on an hour nobody supplied.
+
+Rather than hide the choice, `八字.节气歧义` reports both candidates:
+
+```jsonc
+"节气歧义": {
+  "节气": "立春",
+  "时刻": "2000-02-04T20:40:24",
+  "影响": ["年柱", "月柱"],
+  "此刻之前": { "年柱": "己卯", "月柱": "丁丑" },
+  "此刻之后": { "年柱": "庚辰", "月柱": "戊寅" }
+}
+```
+
+`此刻之后` is what the rest of the response uses. On ordinary days the field is `null`. If the caller can narrow the birth time to one side of `时刻`, prefer the matching branch and say so.
 
 ### `meta.disclaimer`
 
-The response includes a `meta.disclaimer` object enumerating exactly which fields were stripped, nulled, or recomputed and why. Surface it to the end user when explaining the chart's confidence level — it is the single source of truth on what is and isn't trustworthy in a partial-time chart.
+The response includes a `meta.disclaimer` object enumerating exactly which fields are absent, null, or 3-pillar-only and why. Surface it to the end user when explaining the chart's confidence level: it is the single source of truth on what is and isn't trustworthy in a partial-time chart.
 
 ## Development
 

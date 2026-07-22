@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { getBaziChart } from "@bazi-flex/core";
+import { getBaziChart, getThreePillarChart } from "@bazi-flex/core";
 import { computeTenGodStats } from "./getBaziChart/index.js";
 import { enrichPartialResult } from "./getBaziChartPartial/index.js";
 import { resolveChartRequest } from "./shared/request.js";
@@ -45,12 +45,10 @@ describe("enrichPartialResult", () => {
 		day: 15,
 		gender: 1 as const,
 	};
-	const placeholderInput = { ...partialInput, hour: 12, minute: 0 };
 	const birth = { year: 1990, month: 6, day: 15 };
 
 	const buildPartial = (referenceDate = "2026-04-19") => {
-		const raw = getBaziChart(placeholderInput);
-		return enrichPartialResult(raw, birth, req(referenceDate));
+		return enrichPartialResult(getThreePillarChart(partialInput), birth, req(referenceDate));
 	};
 
 	test("omits 时柱 from 柱位详细", () => {
@@ -95,7 +93,7 @@ describe("enrichPartialResult", () => {
 
 	test("柱间关系 contains no entries involving 时", () => {
 		// pick a chart known to have time-pillar relations in full mode
-		const raw = getBaziChart({ year: 2002, month: 5, day: 17, hour: 6, minute: 0, gender: 1 });
+		const raw = getThreePillarChart({ year: 2002, month: 5, day: 17, gender: 1 });
 		const enriched = enrichPartialResult(raw, { year: 2002, month: 5, day: 17 }, req("2026-04-19"));
 		for (const rel of enriched.八字.柱间关系) {
 			expect(rel.pillars).not.toContain("时");
@@ -113,7 +111,7 @@ describe("enrichPartialResult", () => {
 
 	test("partial vs full(hour=12) — 年/月/日柱 are identical", () => {
 		const partial = buildPartial();
-		const fullRaw = getBaziChart(placeholderInput);
+		const fullRaw = getBaziChart({ ...partialInput, hour: 12, minute: 0 });
 		for (const k of ["年柱", "月柱", "日柱"] as const) {
 			expect(partial.八字.柱位详细[k].干支).toBe(fullRaw.八字.柱位详细[k].干支);
 			expect(partial.八字.柱位详细[k].天干).toBe(fullRaw.八字.柱位详细[k].天干);
@@ -140,7 +138,7 @@ describe("enrichPartialResult", () => {
 	});
 
 	test("preserves 流年 (date-only inputs unaffected)", () => {
-		const raw = getBaziChart({ year: 2002, month: 5, day: 17, hour: 12, minute: 0, gender: 1 });
+		const raw = getThreePillarChart({ year: 2002, month: 5, day: 17, gender: 1 });
 		const enriched = enrichPartialResult(
 			raw,
 			{ year: 2002, month: 5, day: 17 },
@@ -153,7 +151,7 @@ describe("enrichPartialResult", () => {
 	test("流年 当前 turns over at 立春, on the same path as full mode", () => {
 		// The two enrich modules used to carry verbatim copies of the defaulting
 		// block. This pins the guarantee that they cannot drift apart again.
-		const raw = getBaziChart({ year: 2002, month: 5, day: 17, hour: 12, minute: 0, gender: 1 });
+		const raw = getThreePillarChart({ year: 2002, month: 5, day: 17, gender: 1 });
 		const birth2002 = { year: 2002, month: 5, day: 17 };
 		const range = { start: 2024, end: 2028 };
 
@@ -167,7 +165,7 @@ describe("enrichPartialResult", () => {
 	test("exposes meta.disclaimer with key fields", () => {
 		const enriched = buildPartial();
 		expect(enriched.meta.disclaimer).toBeDefined();
-		expect(enriched.meta.disclaimer.依赖时辰已置null).toEqual(["命宫", "身宫", "胎元", "胎息"]);
+		expect(enriched.meta.disclaimer.依赖时辰为null).toEqual(["命宫", "身宫", "胎元", "胎息"]);
 		expect(enriched.meta.scoringMethod.algorithm).toBe("tiangan-canggan-weighted (3 pillars)");
 	});
 

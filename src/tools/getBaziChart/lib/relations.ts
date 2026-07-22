@@ -8,7 +8,7 @@
 // This layer therefore lives until the vendoring stage replaces it.
 
 import { PILLAR_KEYS, type PillarKey } from "../../../ganzhi/data.js";
-import type { Pillars } from "../types.js";
+import type { PillarMap } from "../types.js";
 
 export type RelationType =
 	| "相合"
@@ -83,12 +83,19 @@ function matchTriples(involved: string[], chars: readonly string[]): number[][] 
 	return out;
 }
 
-export function computePillarRelations(bazi: {
-	刑冲合会: { 天干: string[]; 地支: string[] };
-	柱位详细: Pillars;
-}): PillarRelationPair[] {
-	const gans = PILLAR_KEYS.map((k) => bazi.柱位详细[`${k}柱` as const].天干);
-	const zhis = PILLAR_KEYS.map((k) => bazi.柱位详细[`${k}柱` as const].地支);
+export function computePillarRelations(
+	bazi: {
+		刑冲合会: { 天干: string[]; 地支: string[] };
+		柱位详细: PillarMap;
+	},
+	pillarKeys: readonly PillarKey[] = PILLAR_KEYS,
+): PillarRelationPair[] {
+	const present = pillarKeys.flatMap((k) => {
+		const pillar = bazi.柱位详细[`${k}柱` as const];
+		return pillar === undefined ? [] : [{ key: k, pillar }];
+	});
+	const gans = present.map((p) => p.pillar.天干);
+	const zhis = present.map((p) => p.pillar.地支);
 	const out: PillarRelationPair[] = [];
 
 	const extend = (kind: "天干" | "地支", rawStrings: string[], chars: readonly string[]): void => {
@@ -112,7 +119,7 @@ export function computePillarRelations(bazi: {
 				out.push({
 					kind,
 					type: parsed.type,
-					pillars: idxs.map((i) => PILLAR_KEYS[i] ?? ("年" as PillarKey)),
+					pillars: idxs.map((i) => present[i]?.key ?? ("年" as PillarKey)),
 					干支: idxs.map((i) => chars[i] ?? ""),
 					raw,
 				});
