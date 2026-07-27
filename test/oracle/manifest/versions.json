@@ -1,7 +1,7 @@
 {
 	"$comment": "Versions the baseline is pinned to. Asserted against installed node_modules, not bun.lock, because --frozen-lockfile does not detect a stale node_modules. Drift here invalidates every fingerprint.",
 	"dependencies": {
-		"tyme4ts": "1.4.6"
+		"tyme4ts": "1.5.2"
 	},
 	"corpusVersion": 1
 }

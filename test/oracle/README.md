@@ -2,7 +2,7 @@
 
 "Oracle" is the testing term (test oracle): the source of truth a run is judged
 against. Here that source is the current code's actual behaviour on top of
-`tyme4ts@1.4.6`. Nothing to do with Oracle
+`tyme4ts@1.5.2`. Nothing to do with Oracle
 Corporation; it is fully offline and touches no network service.
 
 It exists because the calculation was vendored into this repo and the later
