@@ -244,8 +244,14 @@ function midnightLayer(): OracleCase[] {
 
 /**
  * The +/-1 minute pair is the reason this layer exists: it is the only place a
- * one-minute input difference must flip the 年柱, so a rounding error in the
- * solar-term computation surfaces here first.
+ * one-minute input difference must flip the 年柱, which holds this repo's own
+ * 立春 boundary arithmetic to account.
+ *
+ * It says nothing about the solar-term instants themselves. `termInstant` reads
+ * the boundary from the same engine the chart does, so an engine that moved
+ * 立春 moves this base and every offset with it, and the case stays on the side
+ * it was already on. Proving a tyme4ts upgrade left the calendar alone needs the
+ * old and new versions diffed against each other, not this layer.
  */
 const LICHUN_OFFSETS_MINUTES = [-2880, -60, -1, 0, 1, 60, 2880] as const;
 
