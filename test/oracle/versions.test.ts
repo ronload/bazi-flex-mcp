@@ -33,8 +33,10 @@ describe("installed dependency versions", () => {
 			expect(
 				actual,
 				`node_modules/${pkg} is ${actual} but manifest/versions.json pins ${expected}. ` +
-					"If this is an intentional upgrade, re-baseline the oracle and bump corpusVersion; " +
-					"otherwise run `bun install --force` to repair node_modules.",
+					"If this is an intentional upgrade, diff the two versions against each other first, " +
+					"then move this pin. Re-baseline only if oracle:check reports moved cases, and leave " +
+					"corpusVersion alone unless the corpus itself changed. " +
+					"Otherwise run `bun install --force` to repair node_modules.",
 			).toBe(expected);
 		});
 
