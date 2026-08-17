@@ -58,7 +58,7 @@
     "@bazi-flex/core": "workspace:*",
     "@hono/mcp": "^0.3.1",
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "hono": "^4.13.1",
+    "hono": "^4.13.2",
     "tyme4ts": "1.5.2",
     "zod": "^4.0.0"
   },
@@ -66,7 +66,7 @@
     "zod": "~4.3.6"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.7",
+    "@biomejs/biome": "^2.5.8",
     "@types/bun": "latest",
     "typescript": "^7.0.2",
     "wrangler": "~4.85.0"
